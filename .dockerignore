@@ -1,0 +1,17 @@
+.git
+.env
+**/.env
+**/node_modules
+**/lib
+**/*.tsbuildinfo
+apps/web/dist
+apps/zhiwo/dist
+coverage
+runtime
+userdata
+.artifacts
+.dsh-build
+.worktrees
+worktrees
+.agents/worktrees
+deploy/zhiwo/secrets

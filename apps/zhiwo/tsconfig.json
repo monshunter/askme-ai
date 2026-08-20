@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": ["src/bin.ts", "src/version.ts"],
+  "references": [
+    { "path": "../../packages/zhiwo/product" }
+  ]
+}

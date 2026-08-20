@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "officialRepository": "https://github.com/deepseek-ai/deepseek-harness.git",
+  "upstreamBase": "141eb6fef83422698aef7a981029e843e8161534",
+  "surfaces": {
+    "toolCatalog": {
+      "path": "docs/tool-catalog.md",
+      "sha256": "68b2fc67d5539a321d48cf72d7dd78e7a2726541f8d0cf019490ec33ecc096a7"
+    },
+    "apiGateway": {
+      "path": "docs/api-gateway.md",
+      "sha256": "d2896551b61b413f5041dbfb32037c8ba1f2f57aaa56d3653083497cee602ab6"
+    },
+    "clientModules": {
+      "path": "docs/subsystems/client-modules.md",
+      "sha256": "68147f81450fc8d026143c7161f309c9b10554107dc9c04a3fc6de935dcc43a1"
+    },
+    "webApplication": {
+      "path": "apps/web/package.json",
+      "sha256": "f27015022048ef4d304787f7cfe7c12625b7f3ad3cd9aa9c75d1addb6a75f923"
+    },
+    "baseComposition": {
+      "path": "packages/bundle/base/cordis.patch.yml",
+      "sha256": "9870a518274194c0e1ebd870cee2737fbc2ffc04ae36887871ffe6fcf74beac1"
+    }
+  }
+}

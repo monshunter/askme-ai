@@ -48,8 +48,12 @@ const repositoryUrl = 'git+https://github.com/deepseek-harness/deepseek-harness.
  * their trusted publishing against the repository that runs the workflow.
  */
 const publishedRepositoryUrl = 'git+https://github.com/deepseek-ai/deepseek-harness.git'
+/** Source home for private Zhiwo product artifacts delivered from this fork. */
+const zhiwoRepositoryUrl = 'git+https://github.com/monshunter/deepseek-harness.git'
 /** Private packages that participate in workspace checks but not releases. */
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
+/** Product-only workspaces delivered as Zhiwo artifacts, not in the upstream npm family. */
+const zhiwoProductDirectories = new Set(['packages/zhiwo/product', 'apps/zhiwo'])
 /** npm namespace reserved for private experimental packages. */
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
 /** Directories whose packages this repository publishes: one release member each. */
@@ -108,6 +112,7 @@ function readJson(path: string): PackageManifest {
 
 const rootManifest = readJson(join(root, 'package.json'))
 const repositoryVersion = rootManifest.version
+const zhiwoVersion = readFileSync(join(root, 'VERSION'), 'utf8').trim()
 const landlockWorkspaceManifest = readJson(join(root, 'native/landlock-run/package.json'))
 const landlockVersion = landlockWorkspaceManifest.version
 
@@ -158,6 +163,9 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // sandbox-local resolves it through the package's ./runner export. tsdown
   // also shares its generated FFI code through a hashed runtime chunk.
   '@deepseek-ai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
+  // Knowledge conversion runs in a worker entry. Both package entries share
+  // the immutable compiler implementation through a hashed tsdown chunk.
+  '@deepseek-ai/dsh-zhiwo-product': ['lib/converter-worker.js', 'lib/knowledge-*.js'],
   // SQLite loads every statement from immutable package resources at runtime.
   '@deepseek-ai/dsh-session-persistence-sqlite': ['resources/sql/**/*.sql'],
   '@deepseek-ai/dsh-skill-badge': ['assets'],
@@ -254,9 +262,31 @@ export function checkExperimentalManifest({ dir, manifest }: WorkspaceManifest):
   return errors
 }
 
-function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
-  const errors = checkExperimentalManifest({ dir, manifest })
+/** Private Zhiwo workspaces carry the product version without joining upstream npm releases. */
+export function checkZhiwoProductManifest({ dir, manifest }: WorkspaceManifest): string[] {
+  if (!zhiwoProductDirectories.has(dir)) return []
   const label = manifest.name ?? dir
+  const errors: string[] = []
+  if (manifest.private !== true) errors.push(`${label}: Zhiwo product package must set "private": true`)
+  if (manifest.publishConfig !== undefined) errors.push(`${label}: Zhiwo product package must omit publishConfig`)
+  if (manifest.version !== zhiwoVersion) {
+    errors.push(`${label}: package.json version must match Zhiwo VERSION ${zhiwoVersion}`)
+  }
+  if (manifest.repository?.type !== 'git'
+    || manifest.repository.url !== zhiwoRepositoryUrl
+    || manifest.repository.directory !== dir) {
+    errors.push(`${label}: Zhiwo product repository must use ${zhiwoRepositoryUrl} with directory ${dir}`)
+  }
+  return errors
+}
+
+function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
+  const errors = [
+    ...checkExperimentalManifest({ dir, manifest }),
+    ...checkZhiwoProductManifest({ dir, manifest }),
+  ]
+  const label = manifest.name ?? dir
+  const isZhiwoProduct = zhiwoProductDirectories.has(dir)
   const isLandlockPackageDir = dir.startsWith('native/landlock-run/packages/')
   const isPublicLandlockPackage = isLandlockPackageDir
     && manifest.name !== undefined
@@ -275,7 +305,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
       || manifest.repository.directory !== expectedDirectory) {
       errors.push(`${label}: published Landlock package repository must use ${repositoryUrl} with directory ${expectedDirectory} for trusted publishing`)
     }
-  } else if (releaseMemberDirectory.test(dir)) {
+  } else if (releaseMemberDirectory.test(dir) && !isZhiwoProduct) {
     // Release members state that they are publishable: npm refuses a private
     // package, and the repository field is how a consumer finds the source of
     // the package it installed.
@@ -297,7 +327,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
       || manifest.repository.directory !== dir) {
       errors.push(`${label}: release member repository must use ${publishedRepositoryUrl} with directory ${dir}`)
     }
-  } else if (!experimentalPackageDirectory.test(dir) && manifest.private !== true) {
+  } else if (!experimentalPackageDirectory.test(dir) && !isZhiwoProduct && manifest.private !== true) {
     errors.push(`${label}: package.json must set "private": true`)
   }
 
@@ -314,7 +344,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     }
   }
 
-  if (dir.startsWith('apps/') && manifest.name?.startsWith('@deepseek-ai/')) {
+  if (dir.startsWith('apps/') && manifest.name?.startsWith('@deepseek-ai/') && !isZhiwoProduct) {
     const expectedFiles = appPackageFiles[manifest.name]
     if (expectedFiles === undefined) {
       errors.push(`${label}: app package has no publication files policy`)
@@ -341,7 +371,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     if (peer && dev && peer !== dev) {
       errors.push(`${label}: @deepseek-ai/cordis peer (${peer}) and dev (${dev}) ranges must match`)
     }
-    if (manifest.version !== repositoryVersion) {
+    if (!isZhiwoProduct && manifest.version !== repositoryVersion) {
       errors.push(`${label}: package.json version must match root version ${repositoryVersion ?? '(missing)'}`)
     }
     if (manifest.type !== 'module') {
@@ -431,7 +461,8 @@ export function checkExperimentalDependencyIsolation(manifests: readonly Workspa
     .filter(name => name !== undefined))
   const errors: string[] = []
   for (const { dir, manifest } of manifests) {
-    if (!releaseMemberDirectory.test(dir) && dir !== 'python/sdk-runtime') continue
+    if ((!releaseMemberDirectory.test(dir) || zhiwoProductDirectories.has(dir))
+      && dir !== 'python/sdk-runtime') continue
     for (const section of runtimeDependencySections) {
       for (const name of Object.keys(manifest[section] ?? {})) {
         if (!experimentalNames.has(name)) continue

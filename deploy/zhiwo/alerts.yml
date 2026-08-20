@@ -1,0 +1,24 @@
+groups:
+  - name: zhiwo
+    rules:
+      - alert: ZhiwoPublicRuntimeDown
+        expr: up{job="zhiwo"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Zhiwo Public Runtime is unavailable
+      - alert: ZhiwoServerErrors
+        expr: sum(rate(zhiwo_http_requests_total{status=~"5.."}[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Zhiwo is returning sustained server errors
+      - alert: ZhiwoRateLimitSurge
+        expr: sum(rate(zhiwo_rate_limit_total[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Zhiwo rate limiting is elevated

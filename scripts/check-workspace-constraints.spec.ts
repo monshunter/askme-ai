@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   checkExperimentalDependencyIsolation,
   checkExperimentalManifest,
+  checkZhiwoProductManifest,
   type WorkspaceManifest,
 } from './check-workspace-constraints.ts'
 
@@ -71,6 +72,42 @@ describe('experimental workspace constraints', () => {
 
     expect(checkExperimentalDependencyIsolation(manifests)).toEqual([
       '@deepseek-ai/dsh-python-runtime: dependencies.@deepseek-ai/dsh-experimental-prototype must not reference an experimental package',
+    ])
+  })
+})
+
+describe('Zhiwo product workspace constraints', () => {
+  const product: WorkspaceManifest = {
+    dir: 'apps/zhiwo',
+    manifest: {
+      name: '@deepseek-ai/dsh-zhiwo',
+      version: '0.4.0',
+      private: true,
+      repository: {
+        type: 'git',
+        url: 'git+https://github.com/monshunter/deepseek-harness.git',
+        directory: 'apps/zhiwo',
+      },
+    },
+  }
+
+  it('keeps the product version in a private fork-owned artifact family', () => {
+    expect(checkZhiwoProductManifest(product)).toEqual([])
+  })
+
+  it('rejects upstream publication metadata and a mismatched product version', () => {
+    expect(checkZhiwoProductManifest({
+      ...product,
+      manifest: {
+        ...product.manifest,
+        version: '0.1.0-rc.8',
+        private: false,
+        publishConfig: { access: 'public' },
+      },
+    })).toEqual([
+      '@deepseek-ai/dsh-zhiwo: Zhiwo product package must set "private": true',
+      '@deepseek-ai/dsh-zhiwo: Zhiwo product package must omit publishConfig',
+      '@deepseek-ai/dsh-zhiwo: package.json version must match Zhiwo VERSION 0.4.0',
     ])
   })
 })

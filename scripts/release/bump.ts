@@ -255,6 +255,7 @@ function rootVersion(root: string): string {
 function privateDshVersions(root: string): PrivateDshVersion[] {
   return globSync('packages/*/*/package.json', { cwd: root })
     .map(path => path.replaceAll('\\', '/'))
+    .filter(path => !path.startsWith('packages/zhiwo/'))
     .sort()
     .flatMap((manifestPath) => {
       const parsed: unknown = JSON.parse(readFileSync(join(root, manifestPath), 'utf8'))

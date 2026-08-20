@@ -1,0 +1,7 @@
+{
+  "fixture:public-profile": "public/profile.md",
+  "fixture:entity-a": "public/entities/project-a.md",
+  "fixture:entity-b": "public/entities/project-b.md",
+  "fixture:injection-document": "documents/untrusted-instructions.md",
+  "fixture:personal-contact": "personal/contact.md"
+}

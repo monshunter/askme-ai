@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-20-zhiwo-thin-product-fork.md
+2026-08-20-zhiwo-thin-product-fork.md: 85cd3fd4d3fc486d7c29982d7688a3a782d96e96
+2026-08-20-zhiwo-thin-product-fork.zh.md: b43f5cc9f1f45bebb1d09ba22e4ba5431af5d215

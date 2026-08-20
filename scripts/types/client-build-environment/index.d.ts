@@ -5,3 +5,6 @@ declare const process: {
     readonly [name: `DSH_CLIENT_${string}`]: string | undefined
   }
 }
+
+/** Stylesheet side-effect imports consumed by browser bundlers. */
+declare module '*.css' {}

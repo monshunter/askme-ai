@@ -1,76 +1,46 @@
-# DeepSeek Harness
+# 知我
 
 [English](README.md) | 中文
 
-DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
+知我（英文代码名 Askme）是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的一套只读个人知识问答产品外观。产品保留上游 Agent Loop、LLM 适配器、推理、工具调用、流式输出和会话事件行为，只替换 coding 产品暴露的实体、公开 API、持久化、命令和浏览器界面。
 
-它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
+生产制品只有一个 `zhiwo` 命令，不包含工作区选择器、Shell、终端、Web 搜索、动态插件 loader、工作流、subagent 或 coding UI。模型在一个轮次内只能使用 revision 范围的 `read`、`glob` 和 `grep`；每个展示给访客的引用都必须对应本轮实际访问的来源。
 
-## 开发者预览
+## Run
 
-DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
+### Run from source
 
-## 运行
-
-### 通过 `npm` 运行
-
-安装 `Node.js`，然后运行：
+安装 Node.js 24 或受支持的 Node.js 22 版本及 pnpm，然后准备知识 revision 和产品构建：
 
 ```sh
-npx @deepseek-ai/dsh web
-```
-
-该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.md)。
-
-### 从源码运行
-
-如需从仓库源码运行：
-
-```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
 pnpm install
 pnpm run build
-pnpm dsh web
+pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo sync --source ./userdata
 ```
 
-`pnpm run build` 会准备仓库产物。`pnpm dsh web` 会直接使用这些已构建产物，不会重新构建。
+将 `ZHIWO_COOKIE_SECRET` 设置为至少 32 字节，并提供 `ZHIWO_MODEL`、`ZHIWO_MODEL_API_KEY` 和使用 HTTPS 的 `ZHIWO_PUBLIC_ORIGIN`，然后启动产品：
 
-## 社区与支持
+```sh
+pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo serve
+```
 
-- 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
-- 为你的插件仓库添加 [`dsh-plugin`](https://github.com/topics/dsh-plugin) 话题，便于被发现。
-- 欢迎加入 DeepSeek Harness 企微群：扫码添加企微小助手并填写入群问卷，完成后小助手会邀请你入群。
+在回环地址进行本地开发时，设置 `ZHIWO_DEVELOPMENT=true` 并使用 HTTP Origin。关于编译限制、密钥轮换、备份、回滚、保留策略和生产接口验证，参见[运维指南](docs/user/zhiwo.md)。
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">企微小助手</th>
-      <th align="center">入群问卷</th>
-      <th align="center">微信公众号</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="https://cdn.deepseek.com/harness/readme/community-wecom-assistant.png" alt="DeepSeek Harness 企微小助手二维码" width="180" height="180"></td>
-      <td align="center"><a href="https://trtgsjkv6r.feishu.cn/share/base/form/shrcnIt5twSVdLGD52KJBckGCgg"><img src="https://cdn.deepseek.com/harness/readme/community-wecom-survey.png" alt="DeepSeek Harness 入群问卷二维码" width="180" height="180"></a></td>
-      <td align="center"><img src="https://cdn.deepseek.com/harness/readme/community-wechat-official-account.png" alt="DeepSeek Harness 团队微信公众号二维码" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
+## 产品命令
 
-## 参与贡献
-
-参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- `zhiwo sync [--check]` 将可变 `userdata/` 下的全部普通文件编译为一个不可变只读 revision。
+- `zhiwo serve [--dev]` 启动仅包含产品功能的 UI 和 API。
+- `zhiwo doctor` 校验 Current Revision 和统一的 SQLite 数据库。
+- `zhiwo gc [--dry-run]` 清理既非 Current Revision、也未被会话引用的 revision。
+- `zhiwo rollback <revision-id>` 为 New Sessions 原子选择一个保留且已校验的 Revision。
+- `zhiwo version` 打印产品版本和精确的官方上游 baseline。
 
 ## 开发
 
-请先阅读[开发指南](docs/development.md)与[架构文档](docs/architecture.md)。
+`pnpm run zhiwo:test`、`zhiwo:build`、`zhiwo:surface` 和 `zhiwo:release` 是稳定的产品检查。仓库保留上游 developer harness，供选择性同步 baseline 和执行 Kernel 回归。知我随包携带原生 Agent Loop 所需的服务定义，但其装配、工具注册表、HTTP 路由、浏览器客户端和发布入口只暴露只读职业知识产品。
 
-面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
+Fork 清单见[上游维护](UPSTREAM.md)、[包分类](docs/PACKAGE_CLASSIFICATION.md)、[上游差异](docs/UPSTREAM_DELTA.md)和[baseline 架构](docs/architecture/fork-baseline.md)。贡献者遵循 [AGENTS.md](AGENTS.md)。
 
 ## 许可证
 
-[MIT](LICENSE)
-
-第三方依赖及其许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+[MIT](LICENSE)。第三方依赖及其许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；每次产品构建还会生成 SPDX SBOM 和产物校验和。

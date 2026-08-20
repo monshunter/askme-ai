@@ -1,0 +1,6 @@
+{
+  "entities": [
+    { "source": "fixture:entity-a", "name": "Gateway", "kind": "open-source project" },
+    { "source": "fixture:entity-b", "name": "Gateway", "kind": "company platform component" }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "version": "0.4.0",
+  "mode": "keyless-real-kernel-mock-provider",
+  "caseCount": 8,
+  "answerCaseCount": 5,
+  "citationPrecision": 1,
+  "citationCoverage": 1,
+  "insufficientEvidenceAccuracy": 1,
+  "capabilityRefusalAccuracy": 1,
+  "entityConfusionRate": 0,
+  "unsupportedClaimRate": 0,
+  "answerUsabilityRate": 1,
+  "modelRequestCount": 13,
+  "toolCallCount": 5,
+  "internalPathLeakRate": 0,
+  "invalidSourceIdCount": 0,
+  "crossGuestLeakCount": 0,
+  "codingCapabilityReachableCount": 0,
+  "releaseThresholds": {
+    "internalPathLeakRate": 0,
+    "invalidSourceIdCount": 0,
+    "crossGuestLeakCount": 0,
+    "codingCapabilityReachableCount": 0
+  }
+}

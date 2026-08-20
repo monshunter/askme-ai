@@ -1,0 +1,98 @@
+name: zhiwo
+
+services:
+  sync:
+    profiles: [owner]
+    build:
+      context: ../..
+      dockerfile: deploy/zhiwo/Dockerfile
+    image: zhiwo:${ZHIWO_IMAGE_TAG:-0.4.0}
+    command: [sync, --json]
+    user: "10001:10001"
+    read_only: true
+    network_mode: none
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=512m,mode=1700,uid=10001,gid=10001
+    environment:
+      ZHIWO_SOURCE_ROOT: /source
+      ZHIWO_KNOWLEDGE_ROOT: /var/lib/zhiwo/knowledge
+    volumes:
+      - ${ZHIWO_SOURCE_PATH:-../../userdata}:/source:ro
+      - knowledge:/var/lib/zhiwo/knowledge
+
+  zhiwo:
+    build:
+      context: ../..
+      dockerfile: deploy/zhiwo/Dockerfile
+    image: zhiwo:${ZHIWO_IMAGE_TAG:-0.4.0}
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=128m,mode=1700,uid=10001,gid=10001
+    environment:
+      ZHIWO_PUBLIC_ORIGIN: https://${ZHIWO_DOMAIN:?set ZHIWO_DOMAIN}
+      ZHIWO_COOKIE_SECRET_FILE: /run/secrets/zhiwo_cookie_secret
+      ZHIWO_COOKIE_PREVIOUS_SECRET_FILE: ${ZHIWO_COOKIE_PREVIOUS_SECRET_FILE:-}
+      ZHIWO_MODEL: ${ZHIWO_MODEL:-deepseek-chat}
+      ZHIWO_MODEL_BASE_URL: ${ZHIWO_MODEL_BASE_URL:-https://api.deepseek.com}
+      ZHIWO_MODEL_REASONING_EFFORT: ${ZHIWO_MODEL_REASONING_EFFORT:-high}
+      ZHIWO_MODEL_API_KEY_FILE: /run/secrets/model_api_key
+      ZHIWO_SESSION_RETENTION_DAYS: ${ZHIWO_SESSION_RETENTION_DAYS:-30}
+      ZHIWO_LOG_LEVEL: info
+    secrets:
+      - zhiwo_cookie_secret
+      - model_api_key
+    volumes:
+      - knowledge:/var/lib/zhiwo/knowledge:ro
+      - state:/var/lib/zhiwo/state
+    networks: [private]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:13081/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    depends_on:
+      zhiwo:
+        condition: service_healthy
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    environment:
+      ZHIWO_DOMAIN: ${ZHIWO_DOMAIN:?set ZHIWO_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge, private]
+
+secrets:
+  zhiwo_cookie_secret:
+    file: ./secrets/zhiwo_cookie_secret
+  model_api_key:
+    file: ./secrets/model_api_key
+
+volumes:
+  knowledge:
+  state:
+  caddy_data:
+  caddy_config:
+
+networks:
+  edge:
+  private:
+    internal: true
