@@ -59,6 +59,11 @@
 - id: session-log-download
   disabled: true
 
+# Local spill locators are physical Host paths. Zhiwo keeps bounded inline
+# previews and asks the Agent to narrow a search instead of exposing them.
+- id: spill-local
+  disabled: true
+
 - id: ui-workspace
   disabled: true
 

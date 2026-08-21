@@ -6,6 +6,8 @@ This browser-only plugin fills the native DSH brand, blank-session headline, inp
 
 The input dock validates and renders four bilingual semantic questions from the product's private Connection method. Blank Sessions show welcome questions; the latest completed Turn shows exactly two context and two global questions. Clicking a question fills the native draft without sending it. Automatic and manual refreshes are single-flight, and a failed or malformed refresh leaves the previous four questions in place. Switching language changes the text of the same semantic ids without another request.
 
+Workspace file-location clicks open a dialog over the current conversation without changing the browser URL. Markdown receives rich-text rendering; other UTF-8 text and source files receive a syntax-aware code view; PDF and PNG, JPEG, GIF, or WebP responses receive bounded inline viewers. The client accepts only the documented media types from the product's same-origin endpoint, so an SPA HTML fallback becomes a visible load failure instead of displaying the current chat as document content.
+
 The generic Workspace browser and picker are absent from the AskmeAI composition. Its presentation stylesheet also removes the leading command/access-mode cluster, context meter, and Session statistics strip while preserving the model selector and send control. A visible sidebar action switches the native interface and the AskmeAI Session history between Chinese and English without restoring the generic Settings UI. This package contributes no API, durable state store, routing, conversation implementation, or model-visible content.
 
 ## Model Experience

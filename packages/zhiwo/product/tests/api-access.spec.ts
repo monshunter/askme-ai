@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { HostFrame, MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { VisitorIdentities } from '../src/identity.ts'
-import { ZhiwoApiAccess } from '../src/api-access.ts'
+import { ZhiwoApiAccess, type SessionAuthorizer } from '../src/api-access.ts'
 
 const WORKSPACE_ID = 'workspace-userdata'
 const WORKSPACE_ROOT = '/srv/zhiwo/userdata'
@@ -28,11 +28,12 @@ function response(value: unknown): Response {
   })
 }
 
-function access(): { policy: ZhiwoApiAccess; identities: VisitorIdentities } {
+function access(authorize: SessionAuthorizer = () => Promise.resolve(true)):
+{ policy: ZhiwoApiAccess; identities: VisitorIdentities } {
   const identities = new VisitorIdentities(Buffer.alloc(32, 7), 3600)
   return {
     identities,
-    policy: new ZhiwoApiAccess(identities, WORKSPACE_ID, WORKSPACE_ROOT),
+    policy: new ZhiwoApiAccess(identities, WORKSPACE_ID, WORKSPACE_ROOT, authorize),
   }
 }
 
@@ -68,17 +69,19 @@ describe('Zhiwo native API ownership', () => {
   it('filters Session and Workspace baselines to one browser visitor', async () => {
     const { policy, identities } = access()
     const a = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}a`
+    const wrongScope = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}wrong-scope`
     const b = `${identities.resolve(cookie(SUBJECT_B)).sessionPrefix}b`
     const sessions = await policy.fetch(call('session.list', {}), {
       fetch: () => Promise.resolve(response({
         items: [
-          { sessionId: a, updatedAt: 1, running: false, blank: false },
-          { sessionId: b, updatedAt: 2, running: false, blank: false },
+          { sessionId: a, updatedAt: 1, running: false, blank: false, cwd: WORKSPACE_ROOT, agentPreset: 'zhiwo' },
+          { sessionId: wrongScope, updatedAt: 1, running: false, blank: false, cwd: '/outside', agentPreset: 'developer' },
+          { sessionId: b, updatedAt: 2, running: false, blank: false, cwd: WORKSPACE_ROOT, agentPreset: 'zhiwo' },
         ],
       })),
     })
     expect((await sessions.json() as { result: { value: { items: Array<{ sessionId: string }> } } })
-      .result.value.items.map(item => item.sessionId)).toEqual([a])
+      .result.value.items).toEqual([expect.objectContaining({ sessionId: a, cwd: '/' })])
 
     const workspaces = await policy.fetch(call('workspace.list', {}), {
       fetch: () => Promise.resolve(response({
@@ -104,7 +107,7 @@ describe('Zhiwo native API ownership', () => {
       })),
     })
     expect((await workspaces.json() as { result: { value: unknown } }).result.value).toMatchObject({
-      items: [{ workspaceId: WORKSPACE_ID, sessionIds: [a] }],
+      items: [{ workspaceId: WORKSPACE_ID, path: '/', sessionIds: [a] }],
       archivedSessionIds: [a],
     })
   })
@@ -117,6 +120,33 @@ describe('Zhiwo native API ownership', () => {
 
     expect(denied.status).toBe(404)
     expect(native).not.toHaveBeenCalled()
+  })
+
+  it('denies an owned-prefix Session whose durable workspace or preset is out of scope', async () => {
+    const { identities } = access()
+    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}wrong-scope`
+    const { policy } = access(sessionId => Promise.resolve(sessionId !== owned))
+    const native = vi.fn(() => Promise.resolve(response({ events: [], hasMore: false })))
+
+    await expect(policy.fetch(call('session.history', { sessionId: owned }), { fetch: native }))
+      .resolves.toMatchObject({ status: 404 })
+    expect(native).not.toHaveBeenCalled()
+  })
+
+  it('fails closed when persisted history contains host environment data', async () => {
+    const { policy, identities } = access()
+    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}legacy`
+    const result = await policy.fetch(call('session.history', { sessionId: owned }), {
+      fetch: () => Promise.resolve(response({
+        events: [{ event: { type: 'assistant/chunk', data: { chunk: {
+          type: 'text-delta', index: 0, text: `workspace: ${WORKSPACE_ROOT}/profile.md`,
+        } } } }],
+        hasMore: false,
+      })),
+    })
+
+    expect((await result.json() as { result: { value: unknown } }).result.value)
+      .toEqual({ events: [], hasMore: false })
   })
 
   it('admits the private question endpoint only for a visitor-owned Session', async () => {
@@ -183,7 +213,7 @@ describe('Zhiwo native API ownership', () => {
     }
     const host: HostFrame[] = []
     for await (const frame of policy.stream('host', { cookie: cookie(SUBJECT_A) }, hostFrames())) host.push(frame.payload)
-    expect(host).toEqual([{ type: 'host/workspace-changed', workspace: { ...workspace, sessionIds: [a] } }])
+    expect(host).toEqual([{ type: 'host/workspace-changed', workspace: { ...workspace, path: '/', sessionIds: [a] } }])
   })
 
   it('hides the generic configuration and host-filesystem API', async () => {
@@ -192,6 +222,8 @@ describe('Zhiwo native API ownership', () => {
     for (const method of ['settings.describe', 'credentials.describe', 'host.listDirectory', 'workspace.create']) {
       expect((await policy.fetch(call(method, {}), { fetch: native })).status).toBe(404)
     }
+    const exported = new Request('http://dsh.internal/api/session.export?sessionId=zhiwo-owned', { method: 'GET' })
+    expect((await policy.fetch(exported, { fetch: native })).status).toBe(404)
     expect(native).not.toHaveBeenCalled()
   })
 })

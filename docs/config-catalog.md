@@ -3192,7 +3192,7 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages
 
 ## `@deepseek-ai/dsh-zhiwo-product`
 
-Requires: `connection` · `sessions` · `webServer` · `workspaceRegistry`
+Requires: `connection` · `llm` · `sessions` · `webServer` · `workspaceRegistry`
 
 ```ts config-catalog
 /** Zhiwo host configuration. */
@@ -3203,10 +3203,12 @@ export interface Config {
   dshHome?: string
   /** Browser visitor lifetime in days. */
   cookieMaxAgeDays?: number
+  /** Largest document exposed by the browser preview. */
+  documentMaxBytes?: number
 }
 ```
 
-Source: [`packages/zhiwo/product/src/index.ts:32`](../packages/zhiwo/product/src/index.ts)
+Source: [`packages/zhiwo/product/src/index.ts:53`](../packages/zhiwo/product/src/index.ts)
 
 ## Loadable plugins with no config
 
@@ -3281,6 +3283,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
 - `@deepseek-ai/dsh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
 - `@deepseek-ai/dsh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))
+- `@deepseek-ai/dsh-zhiwo-agent-policy` — requires `fs` · `tools` ([`packages/zhiwo/agent-policy/src/index.ts`](../packages/zhiwo/agent-policy/src/index.ts))
 - `@deepseek-ai/dsh-zhiwo-ui` ([`packages/zhiwo/ui/src/index.ts`](../packages/zhiwo/ui/src/index.ts))
 
 ## Seam packages (not directly loadable)

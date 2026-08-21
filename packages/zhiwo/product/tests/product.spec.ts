@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionApiAccess, HostConnectionHandle } from '@deepseek-ai/dsh-client-connection'
 import type { WebRoute, WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { SessionStore } from '@deepseek-ai/dsh-session'
+import LlmRuntime from '@deepseek-ai/dsh-llm'
 import * as ZhiwoProduct from '../src/index.ts'
 
 const temporaryRoots: string[] = []
@@ -49,12 +50,15 @@ class ConnectionFixture extends Service {
   }
 }
 
-async function requestRoute(route: WebRoute): Promise<{ status: number; contentType: string | null; body: string }> {
+async function requestRoute(
+  route: WebRoute,
+  suffix = '',
+): Promise<{ status: number; contentType: string | null; body: string }> {
   const server = createServer((request, response) => { void route.handler(request, response) })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const address = server.address() as AddressInfo
   try {
-    const response = await fetch(`http://127.0.0.1:${String(address.port)}${route.path}`)
+    const response = await fetch(`http://127.0.0.1:${String(address.port)}${route.path}${suffix}`)
     return {
       status: response.status,
       contentType: response.headers.get('content-type'),
@@ -74,6 +78,12 @@ describe('Zhiwo native web overlay', () => {
   it('registers userdata as one ordinary native Workspace', async () => {
     const root = await mkdtemp(join(tmpdir(), 'zhiwo-workspace-'))
     temporaryRoots.push(root)
+    await writeFile(join(root, 'profile.md'), '# Owner profile\n')
+    await writeFile(join(root, 'example.ts'), 'export const answer = 42\n')
+    await writeFile(join(root, 'paper.pdf'), '%PDF-1.4\n%%EOF\n')
+    await writeFile(join(root, 'pixel.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    await writeFile(join(root, 'wrong.png'), 'not a PNG\n')
+    await writeFile(join(root, 'archive.zip'), Buffer.from([0xff, 0xfe, 0xfd]))
     const ctx = new Context()
     const indexes: Array<(html: string) => string> = []
     const routes: WebRoute[] = []
@@ -88,6 +98,7 @@ describe('Zhiwo native web overlay', () => {
       },
     } as WebServer)
     await ctx.plugin(ConnectionFixture).await()
+    await ctx.plugin(LlmRuntime).await()
     await ctx.plugin(SessionStore).await()
     await ctx.plugin(WorkspaceRegistryFixture).await()
     await ctx.plugin(ZhiwoProduct, { workspaceRoot: root, dshHome: join(root, '.dsh') }).await()
@@ -103,7 +114,11 @@ describe('Zhiwo native web overlay', () => {
     expect(html).not.toContain('DSH Local Build')
     expect(html).not.toContain('/favicon.svg')
 
-    expect(routes.map(route => route.path).toSorted()).toEqual(['/favicon.svg', '/manifest.webmanifest'])
+    expect(routes.map(route => route.path).toSorted()).toEqual([
+      '/api/zhiwo/document',
+      '/favicon.svg',
+      '/manifest.webmanifest',
+    ])
     const manifest = await requestRoute(routes.find(route => route.path === '/manifest.webmanifest')!)
     expect(manifest).toMatchObject({ status: 200, contentType: 'application/manifest+json' })
     expect(JSON.parse(manifest.body)).toMatchObject({
@@ -115,5 +130,37 @@ describe('Zhiwo native web overlay', () => {
     const favicon = await requestRoute(routes.find(route => route.path === '/favicon.svg')!)
     expect(favicon).toMatchObject({ status: 200, contentType: 'image/svg+xml' })
     expect(favicon.body).toContain('>知</text>')
+
+    const document = routes.find(route => route.path === '/api/zhiwo/document')!
+    await expect(requestRoute(document, '?path=%2Fprofile.md')).resolves.toMatchObject({
+      status: 200,
+      contentType: 'text/plain; charset=utf-8',
+      body: '# Owner profile\n',
+    })
+    await expect(requestRoute(document, '?path=%2F..%2Fpackage.json')).resolves.toMatchObject({
+      status: 400,
+      body: 'invalid document path',
+    })
+    await expect(requestRoute(document, '?path=%2Fexample.ts')).resolves.toMatchObject({
+      status: 200,
+      contentType: 'text/plain; charset=utf-8',
+      body: 'export const answer = 42\n',
+    })
+    await expect(requestRoute(document, '?path=%2Fpaper.pdf')).resolves.toMatchObject({
+      status: 200,
+      contentType: 'application/pdf',
+    })
+    await expect(requestRoute(document, '?path=%2Fpixel.png')).resolves.toMatchObject({
+      status: 200,
+      contentType: 'image/png',
+    })
+    await expect(requestRoute(document, '?path=%2Fwrong.png')).resolves.toMatchObject({
+      status: 415,
+      body: 'document format does not match its extension',
+    })
+    await expect(requestRoute(document, '?path=%2Farchive.zip')).resolves.toMatchObject({
+      status: 415,
+      body: 'document format is not supported',
+    })
   })
 })

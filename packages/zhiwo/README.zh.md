@@ -6,6 +6,7 @@
 
 | 包 | 职责 |
 |---|---|
+| [`agent-policy/`](agent-policy/README.md) | 把资料发现 Tool 限制在规范 Session Workspace 内，并把成功读取的路径投影为相对位置。 |
 | [`product/`](product/README.md) | 注册原始 Workspace、派生双语问题目录，并交付 Web Profile Patch。 |
 | [`ui/`](ui/README.md) | 填充原生 Brand、问候语、提示问题与产品文案 Slot，呈现 Session 历史和语言切换，并移除不需要的 Workspace 与诊断界面元素。 |
 

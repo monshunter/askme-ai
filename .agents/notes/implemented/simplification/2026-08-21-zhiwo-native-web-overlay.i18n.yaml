@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-08-21-zhiwo-native-web-overlay.md
-2026-08-21-zhiwo-native-web-overlay.md: 3867142e35047170da332f078d64aa1dd188360c
-2026-08-21-zhiwo-native-web-overlay.zh.md: 49dd7c817b00c7b880d56b57b19deee52cf51af6
+2026-08-21-zhiwo-native-web-overlay.md: 8af88da6b44ceba28b0a57ab3a1f18a38680ec39
+2026-08-21-zhiwo-native-web-overlay.zh.md: 05863908ce1539cea79d6c712a0816433610168d

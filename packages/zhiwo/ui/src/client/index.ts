@@ -4,9 +4,16 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { ZhiwoBrandMark, ZhiwoBrandName } from './Brand.tsx'
+import {
+  createDocumentPreviewController,
+  DocumentPreview,
+  type DocumentPreviewInjected,
+} from './DocumentPreview.tsx'
+import { documentPreviewHref } from './document-preview-url.ts'
 import { ZhiwoGreeting } from './Greeting.tsx'
 import { ZhiwoLanguageAction, type ZhiwoLanguageInjected } from './LanguageAction.tsx'
 import { SessionBrowser, type SessionBrowserInjected } from './SessionBrowser.tsx'
@@ -14,6 +21,8 @@ import { QuestionSuggestions, type QuestionSuggestionsInjected } from './Questio
 import type { QuestionRequest } from './question-contract.ts'
 import { en, zh } from './locales.ts'
 import './zhiwo.css'
+
+export { documentPreviewHref } from './document-preview-url.ts'
 
 /** Required services: native presentation and Workspace/Session runtimes. */
 export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection']
@@ -61,6 +70,7 @@ function startDefaultWorkspace(ctx: ClientContext): () => void {
  * @param ctx - Client root context.
  */
 export function apply(ctx: ClientContext): void {
+  const documentPreview = createDocumentPreviewController()
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'zhiwo-ui: dictionaries')
   ctx.effect(() => startDefaultWorkspace(ctx), 'zhiwo-ui: default Workspace selection')
   ctx.on('ui/product-title', (next) => {
@@ -75,6 +85,23 @@ export function apply(ctx: ClientContext): void {
     next()
     return t('placeholder.message')
   })
+
+  ctx.on('workspaces/open-path', async (path, next) => {
+    const handled = await next()
+    if (handled) return true
+    const href = documentPreviewHref(path)
+    if (href === undefined) throw new Error('Zhiwo refused an invalid document path')
+    documentPreview.open(path)
+    return true
+  })
+
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'zhiwo-document-preview',
+    order: 10,
+    locale: NS,
+    inject: (): DocumentPreviewInjected => ({ preview: documentPreview }),
+  }, DocumentPreview))
 
   ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
     name: 'conversation.input.dock',

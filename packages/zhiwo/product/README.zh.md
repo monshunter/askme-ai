@@ -13,9 +13,13 @@ DSH_HOME=.artifacts/zhiwo pnpm dsh web \
 
 Patch 后的 Web Server 默认绑定 `127.0.0.1:18000`。单次启动时显式 `--port` 优先；否则 `ZHIWO_LISTEN_PORT` 可以覆盖 `18000`。端口无效或被占用时启动直接失败，不会选择随机端口。
 
-`zhiwo` Preset 告诉模型，它是资料所有者面向访客的个人 Agent。回答中的第一人称指资料所有者，不能指 Agent 或访客，模型也不得把访客信息或机器环境数据当成所有者信息。引用只使用相对路径，绝不输出绝对路径。该 Preset 使用维护中的文件系统 Consumer，并把 `mutations` 设为 `false`，同时挂载维护中的文件搜索 Consumer。因此模型只会看到 `read`、`glob` 和 `grep`，这些工具和原生 DSH 一样直接以 Session `cwd` 为工作目录。文件从 `userdata/` 实时读取；修改原文件后，后续 Turn 无需同步即可检索到新内容。
+`zhiwo` Preset 告诉模型，它是资料所有者面向访客的个人 Agent。回答中的第一人称指资料所有者，不能指 Agent 或访客；测试 Fixture 与示例也不能在缺少所有者正式资料确认时成为所有者事实。该 Preset 使用维护中的文件系统 Consumer，并把 `mutations` 设为 `false`，同时挂载维护中的文件搜索 Consumer，因此模型只会看到 `read`、`glob` 和 `grep`。[`zhiwo-agent-policy`](../agent-policy/README.md) 插件通过文件系统 Provider 解析每个读取或搜索根，并要求其规范目标仍位于 Session `cwd` 下；绝对路径、`..` 穿越和指向外部目标的符号链接会在读取或启动搜索进程前失败。成功的 read 值只暴露规范化相对路径。文件仍从 `userdata/` 实时读取；修改原文件后，后续 Turn 无需同步即可检索到新内容。
 
-Host 插件还会在原生 Connection Transport 外安装一条访问策略。无状态签名 Cookie 为原生 Session ID 派生不透明的 Owner Prefix。该策略强制新 Session 使用已注册 Workspace，在分发前拒绝其他访问者的 Session ID，过滤列表与 Workspace 投影，并过滤两条原生 WebSocket 事件流。它只在 `DSH_HOME` 下持久化一把私有签名密钥，不拥有 Visitor、Message 或 Session 数据库。因此不同浏览器 Profile 共用只读 Workspace，但原生对话历史保持隔离。
+Host 插件还会在原生 Connection Transport 外安装一条访问策略。无状态签名 Cookie 为原生 Session ID 派生不透明的 Owner Prefix。该策略强制新 Session 使用已注册 Workspace 与 `zhiwo` Preset，并在每次访问既有 Session 前再次验证这两个事实；它还会过滤列表与两条原生 WebSocket 事件流，并把 Workspace、Host Home 与 Session cwd 投影成虚拟根 `/`。原始 Session 导出保持不可用。含私有宿主路径的旧历史会被隐藏；当前 Zhiwo 模型输出则在写入 Session 前缓冲，只要回答包含宿主绝对路径、宿主用户名或私有运行时设置，就替换成固定的安全回答。该策略只在 `DSH_HOME` 下持久化一把私有签名密钥，不拥有 Visitor、Message 或 Session 数据库。因此不同浏览器 Profile 共用只读 Workspace，但原生对话历史保持隔离。
+
+原生 DSH 文档链接通常通过 `host.openPath` 启动操作系统默认应用。知我不会把这项 API 暴露给匿名浏览器；Client 通过原生 Workspace Runtime 接管会话文件位置，请求 `/api/zhiwo/document`，确认响应媒体类型后在当前页面的弹窗中展示。Markdown 使用富文本渲染器，其他 UTF-8 文本和源码使用支持语法着色的代码视图，PDF 与 PNG、JPEG、GIF 或 WebP 图片使用有大小限制的内嵌查看器；HTML 只按纯文本提供和展示，绝不执行。Host 只接受虚拟绝对路径，把真实文件目标解析到 `userdata/` 下，拒绝路径穿越、外部符号链接、目录、超大文件、错误的 PDF 或图片签名、不支持的二进制格式和无效 UTF-8。允许的响应设置 `no-store` 与 `nosniff`；没有安全内置查看器的格式会明确失败，不会调用宿主操作系统。默认预览上限为 2 MiB，可通过 `documentMaxBytes` 配置。
+
+知我禁用本地 Spill 后端，因为它的恢复定位信息是 Host 物理路径。被截断的搜索结果保留在行内，并提示 Agent 缩小请求；模型上下文与浏览器会话都不会出现临时文件位置。
 
 应用启动时还会异步安排一次清单扫描，读取 Workspace 下符合条件的直接子目录与普通文档元数据，用名称、类型、大小和修改时间生成指纹，不读取文档正文。指纹命中 `DSH_HOME` 下带版本的私有缓存时，直接发布其中的 100 个双语语义问题对，不重新构建或重写；目录或文档变化时重新构建并原子替换缓存。存在项目时为 50 个全局问题对加 50 个项目问题对，否则为 100 个全局问题对。内部 `zhiwo/questions` Remote 复用现有 Typert Gateway 与 Visitor Session 校验。问候页响应包含四个轮换问题；已完成 Turn 的响应严格包含两个由该 Turn 推断的问题和两个初始化全局问题。提示问题不会额外调用模型。
 

@@ -360,6 +360,23 @@ describe('WorkspaceRuntime', () => {
     await expect(workspaces.openPath('/missing')).rejects.toThrow(/path open failed/)
   })
 
+  it('lets a product handle a path without invoking the Host opener', async () => {
+    const ctx = new Context()
+    const api = new FakeApiClient()
+    const sessions = new SessionRuntime(ctx, api, fakeRemote())
+    const workspaces = new WorkspaceRuntime(ctx, api, sessions)
+    const opened: string[] = []
+    ctx.on('workspaces/open-path', async (path, next) => {
+      await next()
+      opened.push(path)
+      return true
+    })
+
+    await expect(workspaces.openPath('/w/alpha/readme.md')).resolves.toBeUndefined()
+    expect(opened).toEqual(['/w/alpha/readme.md'])
+    expect(api.callsOf('host.openPath')).toEqual([])
+  })
+
   it('deletes a Workspace or preserves it when the Host rejects deletion', async () => {
     const ctx = new Context()
     const api = new FakeApiClient()

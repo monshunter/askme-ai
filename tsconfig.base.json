@@ -39,6 +39,8 @@
       "@deepseek-ai/cordis-plugin-logger-console": ["./vendor/logger-console/src"],
       "@deepseek-ai/node-addon-landlock-run": ["./native/landlock-run/packages/entry/src/index.ts"],
       "@deepseek-ai/dsh-invariants": ["./packages/runtime-diagnostics/invariants/src/index.ts"],
+      "@deepseek-ai/dsh-zhiwo-agent-policy": ["./packages/zhiwo/agent-policy/src/index.ts"],
+      "@deepseek-ai/dsh-zhiwo-agent-policy/invariant": ["./packages/zhiwo/agent-policy/src/invariant.ts"],
       "@deepseek-ai/dsh-zhiwo-product": ["./packages/zhiwo/product/src/index.ts"],
       "@deepseek-ai/dsh-zhiwo-product/invariant": ["./packages/zhiwo/product/src/invariant.ts"],
       "@deepseek-ai/dsh-zhiwo-product/types": ["./packages/zhiwo/product/src/types.ts"],

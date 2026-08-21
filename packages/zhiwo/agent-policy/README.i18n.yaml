@@ -1,6 +1,6 @@
 # Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
-#   pnpm run verify-translation-pairing --write packages/zhiwo/README.md
-README.md: 47c2cbf0e9f460592f164c0bb03fc3a59facf27e
-README.zh.md: 6d5939be8f6b366b6f4c19d5ae41afa85f6effe9
+#   pnpm run verify-translation-pairing --write packages/zhiwo/agent-policy/README.md
+README.md: 5429ba52c19c00c61d35ddc0f97d522cb3b78712
+README.zh.md: 91c5b1002768593a00d677f4c676e56c4728eeaa

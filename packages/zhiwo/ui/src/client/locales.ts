@@ -20,6 +20,14 @@ export const zh = {
   'questions.error': '问题更新失败，已保留上一组。',
   'questions.retry': '重试',
   'placeholder.message': '问问我的经历、项目、能力或计划',
+  'document.close': '关闭文档预览',
+  'document.loading': '正在加载文档…',
+  'document.error': '无法加载这份文档。',
+  'document.retry': '重试',
+  'document.copy': '复制',
+  'document.copied': '复制成功',
+  'document.image': '图片：{name}',
+  'document.pdf': 'PDF：{name}',
 } satisfies Record<string, string>
 
 /** The Zhiwo namespace key union. */
@@ -52,4 +60,12 @@ export const en = {
   'questions.error': 'Question update failed. The previous set is still available.',
   'questions.retry': 'Retry',
   'placeholder.message': 'Ask about my experience, projects, strengths, or plans',
+  'document.close': 'Close document preview',
+  'document.loading': 'Loading document…',
+  'document.error': 'This document could not be loaded.',
+  'document.retry': 'Retry',
+  'document.copy': 'Copy',
+  'document.copied': 'Copied',
+  'document.image': 'Image: {name}',
+  'document.pdf': 'PDF: {name}',
 } satisfies Record<ZhiwoKey, string>

@@ -3194,7 +3194,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-zhiwo-product`
 
-需要：`connection` · `sessions` · `webServer` · `workspaceRegistry`
+需要：`connection` · `llm` · `sessions` · `webServer` · `workspaceRegistry`
 
 ```ts config-catalog
 /** Zhiwo host configuration. */
@@ -3205,10 +3205,12 @@ export interface Config {
   dshHome?: string
   /** Browser visitor lifetime in days. */
   cookieMaxAgeDays?: number
+  /** Largest document exposed by the browser preview. */
+  documentMaxBytes?: number
 }
 ```
 
-来源：[`packages/zhiwo/product/src/index.ts:26`](../packages/zhiwo/product/src/index.ts)
+来源：[`packages/zhiwo/product/src/index.ts:53`](../packages/zhiwo/product/src/index.ts)
 
 ## 无配置的可加载插件
 
@@ -3283,6 +3285,7 @@ export interface Config {
 - `@deepseek-ai/dsh-tool-subagent-control` — 需要 `tools` · `subagents`（[`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts)）
 - `@deepseek-ai/dsh-user-questions`（[`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts)）
 - `@deepseek-ai/dsh-workspace` — 需要 `storageDomain` · `sessionPersistence`（[`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts)）
+- `@deepseek-ai/dsh-zhiwo-agent-policy` — 需要 `fs` · `tools`（[`packages/zhiwo/agent-policy/src/index.ts`](../packages/zhiwo/agent-policy/src/index.ts)）
 - `@deepseek-ai/dsh-zhiwo-ui`（[`packages/zhiwo/ui/src/index.ts`](../packages/zhiwo/ui/src/index.ts)）
 
 ## Seam 包（不可直接加载）

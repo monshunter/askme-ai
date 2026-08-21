@@ -15,6 +15,7 @@ import type {
   ConnectionApiHeaders,
 } from '@deepseek-ai/dsh-client-connection'
 import type { VisitorIdentities, VisitorIdentity } from './identity.ts'
+import { containsUnsafeValue } from './output-policy.ts'
 import { ZHIWO_QUESTIONS_ENDPOINT } from './questions.ts'
 
 const ALLOWED_METHODS = new Set([
@@ -42,6 +43,9 @@ const SESSION_ID_FIELDS = ['sessionId', 'parentSessionId', 'childSessionId', 'be
 
 type JsonRecord = Record<string, unknown>
 
+/** Resolve whether an owned Session also has the configured Zhiwo workspace and preset. */
+export type SessionAuthorizer = (sessionId: string, signal?: AbortSignal) => Promise<boolean>
+
 function record(value: unknown): JsonRecord | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? value as JsonRecord
@@ -67,6 +71,19 @@ function methodArguments(method: string, payload: unknown): unknown {
   return record(record(payload)?.['args'])?.['request']
 }
 
+function visibleSummary(
+  value: unknown,
+  workspaceRoot: string,
+  identity: VisitorIdentity,
+): JsonRecord | undefined {
+  const summary = record(value)
+  if (summary === undefined
+    || !owns(identity, summary['sessionId'])
+    || summary['cwd'] !== workspaceRoot
+    || summary['agentPreset'] !== 'zhiwo') return undefined
+  return { ...summary, cwd: '/' }
+}
+
 function workspaceView(value: unknown, workspaceId: string, identity: VisitorIdentity): WorkspaceView | undefined {
   const workspace = record(value)
   if (workspace?.['workspaceId'] !== workspaceId) return undefined
@@ -74,27 +91,43 @@ function workspaceView(value: unknown, workspaceId: string, identity: VisitorIde
     ? workspace['sessionIds'].filter(sessionId => owns(identity, sessionId))
     : []
   // The native response has already passed the Host schema; this adapter changes only its Session-id array.
-  return { ...workspace, sessionIds } as unknown as WorkspaceView
+  return { ...workspace, path: '/', sessionIds } as unknown as WorkspaceView
 }
 
-function filteredValue(
+async function filteredValue(
   method: string,
   value: unknown,
   workspaceId: string,
   workspaceRoot: string,
   identity: VisitorIdentity,
-): unknown {
+  authorizeSession: SessionAuthorizer,
+  signal?: AbortSignal,
+): Promise<unknown> {
   const body = record(value)
   if (body === undefined) return value
   switch (method) {
-    case 'session.list':
-    case 'session.search':
+    case 'session.list': {
+      const items = Array.isArray(body['items'])
+        ? body['items'].map(item => visibleSummary(item, workspaceRoot, identity)).filter(item => item !== undefined)
+        : []
       return {
         ...body,
-        items: Array.isArray(body['items'])
-          ? body['items'].filter(item => owns(identity, record(item)?.['sessionId']))
-          : [],
+        items: items.filter(item => !containsUnsafeValue(item, workspaceRoot)),
       }
+    }
+    case 'session.search': {
+      const items: unknown[] = Array.isArray(body['items']) ? body['items'] : []
+      const visibility = await Promise.all(items.map(async (item) => {
+        const row = record(item)
+        const sessionId = row?.['sessionId']
+        return owns(identity, sessionId)
+          && await authorizeSession(sessionId, signal)
+          && !containsUnsafeValue(row, workspaceRoot)
+          ? item
+          : undefined
+      }))
+      return { ...body, items: visibility.filter(item => item !== undefined) }
+    }
     case 'workspace.list':
       return {
         ...body,
@@ -117,8 +150,8 @@ function filteredValue(
     case 'host.describe':
       return {
         ...body,
-        cwd: workspaceRoot,
-        home: workspaceRoot,
+        cwd: '/',
+        home: '/',
         attachedSessions: 0,
         canOpenPath: false,
       }
@@ -130,17 +163,34 @@ function filteredValue(
   }
 }
 
-function filterRpcResponse(
+async function filterRpcResponse(
   method: string,
   body: unknown,
   workspaceId: string,
   workspaceRoot: string,
   identity: VisitorIdentity,
-): unknown {
+  authorizeSession: SessionAuthorizer,
+  signal?: AbortSignal,
+): Promise<unknown> {
   const envelope = record(body)
   const result = record(envelope?.['result'])
   if (envelope === undefined || result?.['ok'] !== true) return body
-  const value = filteredValue(method, result['value'], workspaceId, workspaceRoot, identity)
+  if (method === 'session.history'
+    && containsUnsafeValue(result['value'], workspaceRoot)) {
+    return {
+      ...envelope,
+      result: { ...result, value: { events: [], hasMore: false } },
+    }
+  }
+  const value = await filteredValue(
+    method,
+    result['value'],
+    workspaceId,
+    workspaceRoot,
+    identity,
+    authorizeSession,
+    signal,
+  )
   if (value === undefined && (method === 'session.create' || method === 'session.fork')) {
     return {
       ...envelope,
@@ -177,18 +227,29 @@ function withIdentityCookie(response: Response, identity: VisitorIdentity): Resp
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
 }
 
-function filteredHostFrame(
+async function filteredHostFrame(
   frame: RpcRequest<HostFrame>,
   workspaceId: string,
+  workspaceRoot: string,
   identity: VisitorIdentity,
-): RpcRequest<HostFrame> | undefined {
+  authorizeSession: SessionAuthorizer,
+): Promise<RpcRequest<HostFrame> | undefined> {
   const payload = frame.payload
   switch (payload.type) {
     case 'host/session-added':
+      return owns(identity, payload.sessionId)
+        && payload.cwd === workspaceRoot
+        && payload.agentPreset === 'zhiwo'
+        ? { ...frame, payload: { ...payload, cwd: '/' } }
+        : undefined
     case 'host/session-removed':
-    case 'host/session-status':
-    case 'host/agent-error':
       return owns(identity, payload.sessionId) ? frame : undefined
+    case 'host/session-status':
+      return owns(identity, payload.sessionId) && await authorizeSession(payload.sessionId) ? frame : undefined
+    case 'host/agent-error':
+      return owns(identity, payload.sessionId) && await authorizeSession(payload.sessionId)
+        ? { ...frame, payload: { ...payload, message: 'Zhiwo request failed' } }
+        : undefined
     case 'host/workspace-changed': {
       const workspace = workspaceView(payload.workspace, workspaceId, identity)
       return workspace === undefined
@@ -220,11 +281,13 @@ function filteredHostFrame(
   }
 }
 
-function filteredMuxFrame(
+async function filteredMuxFrame(
   frame: RpcRequest<MuxFrame>,
   identity: VisitorIdentity,
-): RpcRequest<MuxFrame> | undefined {
-  return frame.payload.type === 'stream/error' || owns(identity, frame.payload.sessionId)
+  authorizeSession: SessionAuthorizer,
+): Promise<RpcRequest<MuxFrame> | undefined> {
+  return frame.payload.type === 'stream/error'
+    || (owns(identity, frame.payload.sessionId) && await authorizeSession(frame.payload.sessionId))
     ? frame
     : undefined
 }
@@ -235,11 +298,13 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
    * @param identities - stateless signed-cookie resolver.
    * @param workspaceId - the sole native Workspace exposed by Zhiwo.
    * @param workspaceRoot - canonical path used for every new Session.
+   * @param authorizeSession - validates the Session's workspace and preset.
    */
   constructor(
     private readonly identities: VisitorIdentities,
     private readonly workspaceId: string,
     private readonly workspaceRoot: string,
+    private readonly authorizeSession: SessionAuthorizer,
   ) {}
 
   /** Authorize and filter one native API exchange. */
@@ -247,11 +312,6 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
     const identity = this.identities.resolve(request.headers.get('cookie') ?? undefined)
     const url = new URL(request.url)
     const method = url.pathname.startsWith('/api/') ? url.pathname.slice('/api/'.length) : undefined
-    if (method === 'session.export' && (request.method === 'GET' || request.method === 'HEAD')) {
-      const sessionId = url.searchParams.get('sessionId')
-      if (!owns(identity, sessionId)) return withIdentityCookie(new Response('not found', { status: 404 }), identity)
-      return withIdentityCookie(await next.fetch(request), identity)
-    }
     if (request.method !== 'POST' || method === undefined || !ALLOWED_METHODS.has(method)) {
       return withIdentityCookie(new Response('not found', { status: 404 }), identity)
     }
@@ -266,7 +326,14 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
       return withIdentityCookie(await next.fetch(request), identity)
     }
     const payload = record(parsed.data.payload)
-    if (foreignSessionId(identity, methodArguments(method, payload)) !== undefined) {
+    const argumentsValue = methodArguments(method, payload)
+    const foreign = foreignSessionId(identity, argumentsValue)
+    if (method !== 'session.create' && (foreign !== undefined || await Promise.all(
+      SESSION_ID_FIELDS.map(async (field) => {
+        const sessionId = record(argumentsValue)?.[field]
+        return typeof sessionId === 'string' && !await this.authorizeSession(sessionId, request.signal)
+      }),
+    ).then(results => results.some(Boolean)))) {
       return withIdentityCookie(new Response('not found', { status: 404 }), identity)
     }
 
@@ -275,7 +342,7 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
       message = {
         ...message,
         payload: {
-          sessionId: payload?.['sessionId'] ?? `${identity.sessionPrefix}${randomUUID()}`,
+          sessionId: `${identity.sessionPrefix}${randomUUID()}`,
           workspaceId: this.workspaceId,
         },
       }
@@ -302,7 +369,15 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
     } catch {
       return withIdentityCookie(response, identity)
     }
-    const filtered = filterRpcResponse(method, body, this.workspaceId, this.workspaceRoot, identity)
+    const filtered = await filterRpcResponse(
+      method,
+      body,
+      this.workspaceId,
+      this.workspaceRoot,
+      identity,
+      this.authorizeSession,
+      request.signal,
+    )
     const headers = new Headers(response.headers)
     headers.delete('content-length')
     if (identity.setCookie !== undefined) headers.append('set-cookie', identity.setCookie)
@@ -318,8 +393,14 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
     const identity = this.identities.resolve(headers['cookie'])
     for await (const frame of source) {
       const visible = kind === 'host'
-        ? filteredHostFrame(frame as RpcRequest<HostFrame>, this.workspaceId, identity)
-        : filteredMuxFrame(frame as RpcRequest<MuxFrame>, identity)
+        ? await filteredHostFrame(
+          frame as RpcRequest<HostFrame>,
+          this.workspaceId,
+          this.workspaceRoot,
+          identity,
+          this.authorizeSession,
+        )
+        : await filteredMuxFrame(frame as RpcRequest<MuxFrame>, identity, this.authorizeSession)
       // `F` is fixed by the caller's stream kind; filtering never changes a frame's discriminant family.
       if (visible !== undefined) yield visible as RpcRequest<F>
     }

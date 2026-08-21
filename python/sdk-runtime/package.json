@@ -118,6 +118,7 @@
     "@deepseek-ai/dsh-web-search-perplexity": "workspace:^",
     "@deepseek-ai/dsh-workflow": "workspace:^",
     "@deepseek-ai/dsh-workflow-worker-thread": "workspace:^",
+    "@deepseek-ai/dsh-zhiwo-agent-policy": "workspace:^",
     "@deepseek-ai/dsh-agent-instructions": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/schemastery": "workspace:^"

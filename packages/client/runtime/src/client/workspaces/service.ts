@@ -11,6 +11,20 @@ import type { SessionsPort, SessionsPortList } from '../contract/sessions-port.t
 import type { IWorkspaces } from '../contract/workspaces.ts'
 import { WorkspaceManager, type WorkspaceListPhase } from './manager.ts'
 
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Let a product claim a conversation file location. Every listener calls
+     * `next()` before returning `true`; `false` leaves the Host's native opener
+     * as the fallback.
+     * @param path - resolved path requested by the conversation surface.
+     * @param next - downstream product handlers; false means none claimed the path.
+     * @mode waterfall
+     */
+    'workspaces/open-path'(path: string, next: () => Promise<boolean>): Promise<boolean>
+  }
+}
+
 /** Workspace list plus the two-baseline readiness and default-target projection. */
 export interface WorkspaceListState {
   items: readonly WorkspaceView[]
@@ -63,7 +77,11 @@ export class WorkspaceRuntime implements IWorkspaces {
    * @param api - shared wire client.
    * @param sessions - cross-domain sessions face used for recency and blank-session reuse.
    */
-  constructor(ctx: Context, private readonly api: IApiClient, private readonly sessions: SessionsPort) {
+  constructor(
+    private readonly ctx: Context,
+    private readonly api: IApiClient,
+    private readonly sessions: SessionsPort,
+  ) {
     this.manager = new WorkspaceManager(api)
     this.list = createSnapshotStore<WorkspaceListState>({
       items: [], archivedSessionIds: [], state: 'idle', phase: 'pending', error: null,
@@ -243,6 +261,12 @@ export class WorkspaceRuntime implements IWorkspaces {
    * @param path - absolute or host-resolvable path.
    */
   async openPath(path: string): Promise<void> {
+    const handled = await this.ctx.waterfall(
+      'workspaces/open-path',
+      path,
+      () => Promise.resolve(false),
+    )
+    if (handled) return
     const response = await this.api.host.openPath({ path })
     if (!response.result.ok) {
       throw new Error(`path open failed: ${response.result.error.message}`)

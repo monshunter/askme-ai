@@ -6,6 +6,7 @@ The `zhiwo/` group owns the small AskmeAI product overlay applied to native `dsh
 
 | Package | Role |
 |---|---|
+| [`agent-policy/`](agent-policy/README.md) | Confines discovery tools to the canonical Session workspace and projects successful read paths as relative locations. |
 | [`product/`](product/README.md) | Registers the raw Workspace, derives the bilingual question catalog, and ships the Web profile patch. |
 | [`ui/`](ui/README.md) | Fills native brand, greeting, question, and product-copy slots; renders Session history and the language switch; and removes unused Workspace and diagnostic chrome. |
 

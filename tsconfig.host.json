@@ -306,6 +306,7 @@
     { "path": "./packages/lsp/lsp" },
     { "path": "./packages/lsp/lsp-stdio" },
     { "path": "./packages/lsp/tool-lsp" },
+    { "path": "./packages/zhiwo/agent-policy" },
     { "path": "./packages/zhiwo/product" },
     { "path": "./apps/cli" }
   ]

@@ -53,7 +53,11 @@ const zhiwoRepositoryUrl = 'git+https://github.com/monshunter/deepseek-harness.g
 /** Private packages that participate in workspace checks but not releases. */
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** Product-only workspaces delivered as Zhiwo artifacts, not in the upstream npm family. */
-const zhiwoProductDirectories = new Set(['packages/zhiwo/product', 'packages/zhiwo/ui'])
+const zhiwoProductDirectories = new Set([
+  'packages/zhiwo/agent-policy',
+  'packages/zhiwo/product',
+  'packages/zhiwo/ui',
+])
 /** npm namespace reserved for private experimental packages. */
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
 /** Directories whose packages this repository publishes: one release member each. */

@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 import { Context } from '@deepseek-ai/cordis'
-import { cleanup, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
 import { ZhiwoBrandMark, ZhiwoBrandName } from '../src/client/Brand.tsx'
+import {
+  DocumentPreview,
+  type DocumentPreviewInjected,
+} from '../src/client/DocumentPreview.tsx'
 import { ZhiwoGreeting, type ZhiwoGreetingProps } from '../src/client/Greeting.tsx'
-import { apply, inject } from '../src/client/index.ts'
+import { apply, documentPreviewHref, inject } from '../src/client/index.ts'
 import { ZhiwoLanguageAction, type ZhiwoLanguageActionProps } from '../src/client/LanguageAction.tsx'
 import { SessionBrowser, type SessionBrowserProps } from '../src/client/SessionBrowser.tsx'
 
@@ -21,7 +25,19 @@ const HOLES = [
   'conversation.hero.brand.mark',
   'conversation.hero.headline',
   'conversation.input.dock',
+  'shell.overlay',
 ] as const
+
+const documentT = (key: string, params?: Record<string, unknown>): string => ({
+  'document.close': '关闭文档预览',
+  'document.loading': '正在加载文档…',
+  'document.error': '无法加载这份文档。',
+  'document.retry': '重试',
+  'document.copy': '复制',
+  'document.copied': '复制成功',
+  'document.image': `图片：${String(params?.['name'])}`,
+  'document.pdf': `PDF：${String(params?.['name'])}`,
+})[key] ?? key
 
 async function bench(clean = false) {
   const ctx = new Context()
@@ -48,9 +64,13 @@ async function bench(clean = false) {
   })
   slots.register({
     name: 'root',
-    children: Object.fromEntries(HOLES.map(name => [name, name === 'conversation.input.dock'
-      ? { kind: 'list', scope: 'session' }
-      : { kind: 'single', scope: 'root' }])),
+    children: Object.fromEntries(HOLES.map(name => [name,
+      name === 'conversation.input.dock'
+        ? { kind: 'list', scope: 'session' }
+        : name === 'shell.overlay'
+          ? { kind: 'list', scope: 'root' }
+          : { kind: 'single', scope: 'root' },
+    ])),
   } as never, () => null)
   return { ctx, slots, connectWorkspace, open }
 }
@@ -108,6 +128,135 @@ describe('Zhiwo browser shell', () => {
 
     await fiber.dispose()
     expect(subject.ctx.waterfall('ui/product-title', () => 'DSH Local Build')).toBe('DSH Local Build')
+  })
+
+  it('opens conversation documents in a bounded same-page dialog', async () => {
+    const subject = await bench()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+      '# Owner profile\n\nVisible inside the dialog.',
+      { status: 200, headers: { 'content-type': 'text/plain; charset=utf-8' } },
+    ))
+    const fallback = vi.fn(() => Promise.resolve(false))
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    const entry = subject.slots.entries('shell.overlay')[0]!
+    expect(entry.component).toBe(DocumentPreview)
+    const injected = (entry.inject as unknown as () => DocumentPreviewInjected)()
+    render(<DocumentPreview {...{
+      ...injected,
+      t: documentT,
+    }} />)
+    const location = window.location.href
+
+    await act(async () => {
+      await expect(subject.ctx.waterfall(
+        'workspaces/open-path',
+        '/easyinterview/README.md',
+        fallback,
+      )).resolves.toBe(true)
+    })
+    expect(await screen.findByRole('dialog', { name: 'easyinterview/README.md' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Owner profile' })).toBeTruthy()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/zhiwo/document?path=%2Feasyinterview%2FREADME.md',
+      expect.objectContaining({ cache: 'no-store', credentials: 'same-origin' }),
+    )
+    expect(open).not.toHaveBeenCalled()
+    expect(window.location.href).toBe(location)
+    expect(fallback).toHaveBeenCalledOnce()
+    expect(documentPreviewHref('relative.md')).toBeUndefined()
+
+    fireEvent.click(screen.getByRole('button', { name: '关闭文档预览' }))
+    await waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull() })
+
+    fetch.mockRestore()
+    open.mockRestore()
+    await fiber.dispose()
+  })
+
+  it('rejects an SPA fallback response instead of rendering the chat page as a document', async () => {
+    const subject = await bench()
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(
+      '<html><main>current chat</main></html>',
+      { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } },
+    ))
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    const entry = subject.slots.entries('shell.overlay')[0]!
+    const injected = (entry.inject as unknown as () => DocumentPreviewInjected)()
+    render(<DocumentPreview {...{
+      ...injected,
+      t: documentT,
+    }} />)
+
+    await act(async () => {
+      await subject.ctx.waterfall('workspaces/open-path', '/profile.md', () => Promise.resolve(false))
+    })
+    expect((await screen.findByRole('alert')).textContent).toContain('无法加载这份文档。')
+    expect(screen.queryByText('current chat')).toBeNull()
+
+    fetch.mockRestore()
+    await fiber.dispose()
+  })
+
+  it('renders source, raster image, and PDF responses with type-specific views', async () => {
+    const subject = await bench()
+    const fetch = vi.spyOn(globalThis, 'fetch')
+    const createObjectURL = vi.fn()
+      .mockReturnValueOnce('blob:preview-image')
+      .mockReturnValueOnce('blob:preview-pdf')
+    const revokeObjectURL = vi.fn()
+    const previousCreateObjectURL = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+    const previousRevokeObjectURL = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
+    Object.defineProperties(URL, {
+      createObjectURL: { configurable: true, value: createObjectURL },
+      revokeObjectURL: { configurable: true, value: revokeObjectURL },
+    })
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    const entry = subject.slots.entries('shell.overlay')[0]!
+    const injected = (entry.inject as unknown as () => DocumentPreviewInjected)()
+    render(<DocumentPreview {...{
+      ...injected,
+      t: documentT,
+    }} />)
+
+    fetch.mockResolvedValueOnce(new Response('export const answer = 42\n', {
+      status: 200,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    }))
+    await act(async () => { injected.preview.open('/src/answer.ts') })
+    await waitFor(() => {
+      expect(document.querySelector('pre')?.textContent).toBe('export const answer = 42')
+    })
+    fireEvent.click(screen.getByRole('button', { name: '关闭文档预览' }))
+
+    fetch.mockResolvedValueOnce(new Response(Uint8Array.of(1, 2, 3), {
+      status: 200,
+      headers: { 'content-type': 'image/png' },
+    }))
+    await act(async () => { injected.preview.open('/images/diagram.png') })
+    expect((await screen.findByRole('img', { name: '图片：images/diagram.png' })).getAttribute('src'))
+      .toBe('blob:preview-image')
+    fireEvent.click(screen.getByRole('button', { name: '关闭文档预览' }))
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview-image')
+
+    fetch.mockResolvedValueOnce(new Response('%PDF-1.4', {
+      status: 200,
+      headers: { 'content-type': 'application/pdf' },
+    }))
+    await act(async () => { injected.preview.open('/documents/profile.pdf') })
+    expect((await screen.findByTitle('PDF：documents/profile.pdf')).getAttribute('src')).toBe('blob:preview-pdf')
+    fireEvent.click(screen.getByRole('button', { name: '关闭文档预览' }))
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview-pdf')
+
+    fetch.mockRestore()
+    if (previousCreateObjectURL === undefined) delete (URL as { createObjectURL?: unknown }).createObjectURL
+    else Object.defineProperty(URL, 'createObjectURL', previousCreateObjectURL)
+    if (previousRevokeObjectURL === undefined) delete (URL as { revokeObjectURL?: unknown }).revokeObjectURL
+    else Object.defineProperty(URL, 'revokeObjectURL', previousRevokeObjectURL)
+    await fiber.dispose()
   })
 
   it('renders the requested mark size and localized product names', () => {

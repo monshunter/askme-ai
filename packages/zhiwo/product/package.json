@@ -70,7 +70,9 @@
     "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
     "@deepseek-ai/dsh-host-webserver": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-session-persistence": "workspace:^",
     "@deepseek-ai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/dsh-workspace": "workspace:^"
   },
@@ -83,6 +85,7 @@
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
+    "@deepseek-ai/dsh-session-persistence": "workspace:^",
     "@deepseek-ai/dsh-typert-protocol": "workspace:^",
     "@deepseek-ai/dsh-workspace": "workspace:^",
     "typescript": "^6.0.3"
