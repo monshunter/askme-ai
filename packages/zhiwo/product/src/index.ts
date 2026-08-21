@@ -10,12 +10,13 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import type {} from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionHeader } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-workspace'
 import {
+  ZHIWO_DOCUMENT_TITLE,
   ZHIWO_LOGO_PATH,
-  ZHIWO_PRODUCT_TITLE,
   ZHIWO_WEB_MANIFEST,
 } from './branding.ts'
 import { ZhiwoApiAccess } from './api-access.ts'
@@ -45,7 +46,7 @@ async function authorizeSession(
 export const name = 'zhiwo-product'
 
 /** Services required for the one Workspace and browser access policy. */
-export const inject = ['connection', 'sessions', 'webServer', 'workspaceRegistry']
+export const inject = ['connection', 'llm', 'sessions', 'webServer', 'workspaceRegistry']
 
 /** Zhiwo host configuration. */
 export interface Config {
@@ -57,6 +58,10 @@ export interface Config {
   cookieMaxAgeDays?: number
   /** Largest document exposed by the browser preview. */
   documentMaxBytes?: number
+  /** Maximum model-visible bytes used to generate contextual questions. */
+  questionModelMaxInputBytes?: number
+  /** Maximum output tokens for one contextual-question generation. */
+  questionModelMaxOutputTokens?: number
 }
 
 /** Validated Zhiwo host configuration. */
@@ -65,6 +70,8 @@ export const Config: z<Config> = z.object({
   dshHome: z.string(),
   cookieMaxAgeDays: z.natural().min(1).default(180),
   documentMaxBytes: z.natural().min(1).default(2 * 1024 * 1024),
+  questionModelMaxInputBytes: z.natural().min(1_024).default(32 * 1024),
+  questionModelMaxOutputTokens: z.natural().min(64).default(512),
 })
 
 function serveBrandAsset(
@@ -219,6 +226,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const questions = new ZhiwoQuestions(
     workspace.path,
     ctx.sessions,
+    ctx.llm,
+    config.questionModelMaxInputBytes ?? 32 * 1024,
+    config.questionModelMaxOutputTokens ?? 512,
     (message) => { ctx.logger.warn(message) },
     config.dshHome,
   )
@@ -261,7 +271,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   }), 'zhiwo-product: bounded document preview')
   ctx.effect(() => ctx.webServer.tapIndex((html) => {
     const branded = html
-      .replace(/<title>[^<]*<\/title>/u, `<title>${ZHIWO_PRODUCT_TITLE}</title>`)
+      .replace(/<title>[^<]*<\/title>/u, `<title>${ZHIWO_DOCUMENT_TITLE}</title>`)
       .replace(/<link\s+rel="icon"[^>]*>/u, `<link rel="icon" type="image/png" href="${ZHIWO_LOGO_PATH}" />`)
     const head = '<head>'
     const offset = branded.indexOf(head)

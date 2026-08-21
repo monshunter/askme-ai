@@ -1005,3 +1005,16 @@ Source: [`packages/core/session/src/types.ts:264`](../packages/core/session/src/
 ```
 
 Source: [`packages/web/web-search-deepseek/src/provider.ts:83`](../packages/web/web-search-deepseek/src/provider.ts)
+
+### `zhiwo/*`
+
+<a id="zhiwoquestion-llm-request--log-only"></a>
+
+#### `zhiwo/question-llm-request` — log-only
+
+```ts persistence-catalog
+/** Log-only pre-dispatch record of one contextual-question model request. */
+'zhiwo/question-llm-request': ZhiwoQuestionLlmRequestEventData
+```
+
+Source: [`packages/zhiwo/product/src/types.ts:24`](../packages/zhiwo/product/src/types.ts)

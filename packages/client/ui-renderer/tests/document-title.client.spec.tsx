@@ -42,4 +42,15 @@ describe('DocumentTitle', () => {
     mounted.unmount()
     expect(document.title).toBe('知我AI')
   })
+
+  it('uses a complete product-profile document title without Session copy', () => {
+    const mounted = render(<DocumentTitle
+      documentTitle="AskmeAI | 知我AI"
+      productTitle="知我AI"
+      title="项目经历"
+    />)
+    expect(document.title).toBe('AskmeAI | 知我AI')
+    mounted.unmount()
+    expect(document.title).toBe('知我AI')
+  })
 })

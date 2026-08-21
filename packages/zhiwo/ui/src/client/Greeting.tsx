@@ -10,7 +10,8 @@ export type ZhiwoGreetingProps =
   PropsRuntime<'conversation.hero.headline'> & HeroHeadlineOwnerProps & PropsLocale<'zhiwo'>
 
 /** Render the complete localized brand introduction used by the blank Session. */
-export function ZhiwoIntroduction({ className, placement = 'slot', t }: ZhiwoGreetingProps & {
+export function ZhiwoIntroduction({ className, placement = 'slot', t }: PropsLocale<'zhiwo'> & {
+  readonly className?: string
   readonly placement?: 'slot' | 'dock'
 }) {
   return (
@@ -35,7 +36,7 @@ export function ZhiwoIntroduction({ className, placement = 'slot', t }: ZhiwoGre
 }
 
 /** Suppress the native hero row; the input-dock owns the complete Zhiwo introduction. */
-export function ZhiwoGreeting() {
+export function ZhiwoGreeting(_props: ZhiwoGreetingProps) {
   return <span hidden data-zhiwo-native-hero-hidden />
 }
 

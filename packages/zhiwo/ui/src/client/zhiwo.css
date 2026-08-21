@@ -127,13 +127,14 @@ body[data-zhiwo-ui] [data-zhiwo-sidebar-shell="wide"] > :first-child {
   padding: 0;
 }
 
-body[data-zhiwo-ui] button:has([data-zhiwo-brand-name]) {
-  color: #20392a;
+body[data-zhiwo-ui] [data-zhiwo-sidebar-shell="wide"]
+  button:has([data-zhiwo-brand-name]) span:has(> [data-slot="sidebar.brand.mark"]),
+body[data-zhiwo-ui] [data-zhiwo-sidebar-shell] > :first-child [role="tooltip"] {
+  display: none;
 }
 
-body[data-zhiwo-ui] button:has([data-zhiwo-brand-name]) [data-zhiwo-brand-mark] {
-  width: 46px;
-  height: 46px;
+body[data-zhiwo-ui] button:has([data-zhiwo-brand-name]) {
+  color: #20392a;
 }
 
 body[data-zhiwo-ui] [data-zhiwo-brand-name] {

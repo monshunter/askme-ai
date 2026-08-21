@@ -3207,10 +3207,14 @@ export interface Config {
   cookieMaxAgeDays?: number
   /** Largest document exposed by the browser preview. */
   documentMaxBytes?: number
+  /** Maximum model-visible bytes used to generate contextual questions. */
+  questionModelMaxInputBytes?: number
+  /** Maximum output tokens for one contextual-question generation. */
+  questionModelMaxOutputTokens?: number
 }
 ```
 
-来源：[`packages/zhiwo/product/src/index.ts:51`](../packages/zhiwo/product/src/index.ts)
+来源：[`packages/zhiwo/product/src/index.ts:52`](../packages/zhiwo/product/src/index.ts)
 
 ## 无配置的可加载插件
 

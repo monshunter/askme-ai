@@ -14,6 +14,7 @@
     { "path": "../../client/connection/tsconfig.host.json" },
     { "path": "../../host/apiproxy" },
     { "path": "../../host/webserver" },
+    { "path": "../../llm/llm" },
     { "path": "../../core/session" },
     { "path": "../../session/session-persistence" },
     { "path": "../../typert/protocol" },

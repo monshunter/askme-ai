@@ -31,6 +31,9 @@ export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection'
 /** Dictionary namespace owned by the Zhiwo overlay. */
 const NS = 'zhiwo'
 
+/** Browser-tab title shared by blank and titled Zhiwo Sessions. */
+const DOCUMENT_TITLE = 'AskmeAI | 知我AI'
+
 /** Keep the product on its single supported light palette. */
 function installLightTheme(ctx: ClientContext): () => void {
   const enforce = (snapshot: ThemeSnapshot): void => {
@@ -174,6 +177,10 @@ export function apply(ctx: ClientContext): void {
   ctx.on('ui/product-title', (next) => {
     next()
     return zh['brand.name']
+  })
+  ctx.on('ui/document-title', (_sessionTitle, _productTitle, next) => {
+    next()
+    return DOCUMENT_TITLE
   })
   const t = ctx.locale.bind(NS)
   const connection = ctx.get('connection') as unknown as ConnectionHandle | undefined

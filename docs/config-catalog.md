@@ -3192,7 +3192,7 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages
 
 ## `@deepseek-ai/dsh-zhiwo-product`
 
-Requires: `connection` · `sessions` · `webServer` · `workspaceRegistry`
+Requires: `connection` · `llm` · `sessions` · `webServer` · `workspaceRegistry`
 
 ```ts config-catalog
 /** Zhiwo host configuration. */
@@ -3205,10 +3205,14 @@ export interface Config {
   cookieMaxAgeDays?: number
   /** Largest document exposed by the browser preview. */
   documentMaxBytes?: number
+  /** Maximum model-visible bytes used to generate contextual questions. */
+  questionModelMaxInputBytes?: number
+  /** Maximum output tokens for one contextual-question generation. */
+  questionModelMaxOutputTokens?: number
 }
 ```
 
-Source: [`packages/zhiwo/product/src/index.ts:51`](../packages/zhiwo/product/src/index.ts)
+Source: [`packages/zhiwo/product/src/index.ts:52`](../packages/zhiwo/product/src/index.ts)
 
 ## Loadable plugins with no config
 

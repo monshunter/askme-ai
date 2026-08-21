@@ -38,6 +38,14 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'ui/product-title'(next: () => string): string
+    /**
+     * Let one product profile replace the complete browser title.
+     * @param sessionTitle - Durable title of the selected Session, when present.
+     * @param productTitle - Product title resolved for the assembled browser profile.
+     * @param next - Resolve the next profile contribution or generic Session and product title.
+     * @mode waterfall
+     */
+    'ui/document-title'(sessionTitle: string | undefined, productTitle: string, next: () => string): string
   }
   interface Context {
     /** Mount face provided after the UI renderer activates. */

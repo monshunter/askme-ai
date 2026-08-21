@@ -264,17 +264,19 @@ describe('serializeRequest', () => {
     )).toThrow(expect.objectContaining({ code: 'UNSUPPORTED_REASONING_EFFORT' }))
   })
 
-  it('disables thinking for session-title requests without changing adapter defaults', () => {
-    const wire = serializeRequest(
-      request({
-        messages: history,
-        purpose: 'session-title',
-        reasoningEffort: ReasoningEffortId('max'),
-      }),
-      { thinking: 'enabled', reasoningEffort: 'max' },
-    )
-    expect(wire.thinking).toEqual({ type: 'disabled' })
-    expect(wire.reasoning_effort).toBeUndefined()
+  it('disables thinking for short auxiliary text requests without changing adapter defaults', () => {
+    for (const purpose of ['session-title', 'suggestions'] as const) {
+      const wire = serializeRequest(
+        request({
+          messages: history,
+          purpose,
+          reasoningEffort: ReasoningEffortId('max'),
+        }),
+        { thinking: 'enabled', reasoningEffort: 'max' },
+      )
+      expect(wire.thinking).toEqual({ type: 'disabled' })
+      expect(wire.reasoning_effort).toBeUndefined()
+    }
   })
 
   it('omits thinking fields when unset (provider default applies)', () => {

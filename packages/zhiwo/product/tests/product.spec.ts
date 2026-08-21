@@ -7,6 +7,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionApiAccess, HostConnectionHandle } from '@deepseek-ai/dsh-client-connection'
 import type { WebRoute, WebServer } from '@deepseek-ai/dsh-host-webserver'
+import LlmRuntime from '@deepseek-ai/dsh-llm'
 import { SessionStore } from '@deepseek-ai/dsh-session'
 import * as ZhiwoProduct from '../src/index.ts'
 
@@ -97,6 +98,7 @@ describe('Zhiwo native web overlay', () => {
       },
     } as WebServer)
     await ctx.plugin(ConnectionFixture).await()
+    await ctx.plugin(LlmRuntime).await()
     await ctx.plugin(SessionStore).await()
     await ctx.plugin(WorkspaceRegistryFixture).await()
     await ctx.plugin(ZhiwoProduct, { workspaceRoot: root, dshHome: join(root, '.dsh') }).await()
@@ -107,7 +109,7 @@ describe('Zhiwo native web overlay', () => {
     expect(indexes).toHaveLength(1)
     const html = indexes[0]!('<html><head><link rel="icon" type="image/svg+xml" href="/favicon.svg" /><title>DSH Local Build</title></head></html>')
     expect(html).toContain('zhiwo_guest=v0.')
-    expect(html).toContain('<title>知我AI</title>')
+    expect(html).toContain('<title>AskmeAI | 知我AI</title>')
     expect(html).toContain('<link rel="icon" type="image/png" href="/assets/zhiwo/logo.png" />')
     expect(html).not.toContain('DSH Local Build')
     expect(html).not.toContain('/favicon.svg')

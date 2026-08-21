@@ -1007,3 +1007,16 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 ```
 
 来源：[`packages/web/web-search-deepseek/src/provider.ts:83`](../packages/web/web-search-deepseek/src/provider.ts)
+
+### `zhiwo/*`
+
+<a id="zhiwoquestion-llm-request--log-only"></a>
+
+#### `zhiwo/question-llm-request` — log-only
+
+```ts persistence-catalog
+/** Log-only pre-dispatch record of one contextual-question model request. */
+'zhiwo/question-llm-request': ZhiwoQuestionLlmRequestEventData
+```
+
+来源：[`packages/zhiwo/product/src/types.ts:24`](../packages/zhiwo/product/src/types.ts)

@@ -223,9 +223,21 @@ describe('Zhiwo browser shell', () => {
     await fiber.await()
 
     expect(subject.ctx.waterfall('ui/product-title', () => 'DSH Local Build')).toBe('知我AI')
+    expect(subject.ctx.waterfall(
+      'ui/document-title',
+      '项目经历',
+      '知我AI',
+      () => '项目经历 — 知我AI',
+    )).toBe('AskmeAI | 知我AI')
 
     await fiber.dispose()
     expect(subject.ctx.waterfall('ui/product-title', () => 'DSH Local Build')).toBe('DSH Local Build')
+    expect(subject.ctx.waterfall(
+      'ui/document-title',
+      '项目经历',
+      '知我AI',
+      () => '项目经历 — 知我AI',
+    )).toBe('项目经历 — 知我AI')
   })
 
   it('opens conversation documents in a bounded same-page dialog', async () => {

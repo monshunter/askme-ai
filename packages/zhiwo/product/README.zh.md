@@ -21,9 +21,9 @@ Host 插件还会在原生 Connection Transport 外安装一条访问策略。�
 
 知我禁用本地 Spill 后端，因为它的恢复定位信息是 Host 物理路径。被截断的搜索结果保留在行内，并提示 Agent 缩小请求；模型上下文与浏览器会话都不会出现临时文件位置。
 
-应用启动时还会异步安排一次清单扫描，读取 Workspace 下符合条件的直接子目录与普通文档元数据，用名称、类型、大小和修改时间生成指纹，不读取文档正文。指纹命中 `DSH_HOME` 下带版本的私有缓存时，直接发布其中的 100 个双语语义问题对，不重新构建或重写；目录或文档变化时重新构建并原子替换缓存。存在项目时为 50 个全局问题对加 50 个项目问题对，否则为 100 个全局问题对。内部 `zhiwo/questions` Remote 复用现有 Typert Gateway 与 Visitor Session 校验。问候页响应包含四个轮换问题；已完成 Turn 的响应严格包含两个由该 Turn 推断的问题和两个初始化全局问题。提示问题不会额外调用模型。
+应用启动时还会异步安排一次清单扫描，读取 Workspace 下符合条件的直接子目录与普通文档元数据，用名称、类型、大小和修改时间生成指纹，不读取文档正文。指纹命中 `DSH_HOME` 下带版本的私有缓存时，直接发布其中的 100 个双语语义问题对，不重新构建或重写；目录或文档变化时重新构建并原子替换缓存。存在项目时为 50 个全局问题对加 50 个项目问题对，否则为 100 个全局问题对。内部 `zhiwo/questions` Remote 复用现有 Typert Gateway 与 Visitor Session 校验。问候页响应包含四个轮换目录问题。每个 Turn 完成后，Product 会把截至该 Turn 的有界对话发给同一次回答使用的 Provider 和 Model Route，要求模型实时生成严格两个双语上下文问题，再与初始化全局池中的两个问题组合。自动更新与“换一组”走同一条实时生成路径。分发前写入的 `zhiwo/question-llm-request` 事件记录确切 Route、System Prompt、Messages、Turn Identity 与输出 Token 上限；`questionModelMaxInputBytes` 和 `questionModelMaxOutputTokens` 分别配置两项上限。生成失败或格式无效时会明确返回错误，不会用确定性上下文模板替代，因此 Client 可以保留原来的四个问题。
 
-Host 在返回知我AI页面前改写初始 Document Title 与 Favicon，并用“知我AI”元数据替换通用安装 Manifest 与图标资源。它通过固定的同源 `/assets/zhiwo/*` 路由提供随包交付的 AskmeAI Logo 与一张全页面共用水墨背景。Client 在浏览器、安装、侧栏与问候区使用同一个 Logo，空白和已有标题标签则保持“知我AI”产品名。访问策略只会在通过与其他 Session 操作相同的访问者 Session Ownership 与 Preset 校验后，才允许调用原生消息反馈方法。
+Host 在返回知我AI页面前改写初始 Document Title 与 Favicon，并用“知我AI”元数据替换通用安装 Manifest 与图标资源。它通过固定的同源 `/assets/zhiwo/*` 路由提供随包交付的 AskmeAI Logo 与一张全页面共用水墨背景。Client 在浏览器、安装与问候区使用同一个 Logo；展开后的侧栏只显示本地化品牌文字，不显示 Logo。空白和已有标题标签都只在该 Logo 旁显示“AskmeAI | 知我AI”。访问策略只会在通过与其他 Session 操作相同的访问者 Session Ownership 与 Preset 校验后，才允许调用原生消息反馈方法。
 
 ## Model Experience
 
@@ -39,3 +39,4 @@ Indirectly, through 随仓库交付且由本包 Bundle Patch 选择的 `zhiwo` P
 - 该 Overlay 会隔离匿名浏览器的 Session 历史。它不提供账号登录、授权管理、流量限制、TLS 终止或其他公开部署控制。
 - Workspace 和 Session 历史由原生 DSH 保存在 `DSH_HOME`。应为知我AI 使用独立 Home，避免混入其他 Profile 的工作区或会话。
 - 项目提示只使用直接子目录名，不读取文档正文。目录名过短时，项目标签也会较短，直到源目录被重命名。
+- 已完成 Turn 的提示问题依赖当前 Provider Route。辅助模型请求失败或没有返回有效双语 JSON 时，Client 会保留上一组并提供重试；Product 不会用固定上下文模板掩盖错误。

@@ -3,6 +3,9 @@
 /** Stable product title placed in the initial Zhiwo document. */
 export const ZHIWO_PRODUCT_TITLE = '知我AI'
 
+/** Stable browser-tab title placed in the initial Zhiwo document. */
+export const ZHIWO_DOCUMENT_TITLE = 'AskmeAI | 知我AI'
+
 /** Product logo served to browser tabs, install surfaces, and Client brand slots. */
 export const ZHIWO_LOGO_PATH = '/assets/zhiwo/logo.png'
 

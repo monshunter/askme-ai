@@ -28,6 +28,7 @@
     "tests/minimal-preset.snapshot.ts",
     "tests/zhiwo-preset.snapshot.ts",
     "tests/zhiwo-session-delete.snapshot.ts",
+    "tests/zhiwo-question-generation.snapshot.ts",
     "tests/message-feedback-protocol.snapshot.ts",
     "tests/live-interactions.e2e.ts",
     "tests/question-composer.e2e.ts",

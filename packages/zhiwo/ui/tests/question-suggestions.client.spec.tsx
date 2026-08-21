@@ -126,6 +126,50 @@ describe('Zhiwo question suggestions', () => {
     expect(view.container.querySelectorAll('[data-question-source="global"]')).toHaveLength(2)
   })
 
+  it('uses the completed-Turn endpoint again when follow-up questions are refreshed manually', async () => {
+    const requestQuestions = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        value: response('followup', ['context-a', 'context-b', 'global-a', 'global-b']),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: response('followup', ['context-c', 'context-d', 'global-c', 'global-d']),
+      })
+    const view = render(<QuestionSuggestions {...props({ requestQuestions, turnEndSeq: 23 })} />)
+    await waitFor(() => { expect(view.getByText('中文 context-a')).toBeTruthy() })
+
+    fireEvent.click(view.getByRole('button', { name: '换一组' }))
+    await waitFor(() => { expect(view.getByText('中文 context-c')).toBeTruthy() })
+    expect(requestQuestions).toHaveBeenCalledTimes(2)
+    expect(requestQuestions).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: 'followup',
+      turnEndSeq: 23,
+      excludeIds: ['context-a', 'context-b', 'global-a', 'global-b'],
+    }), expect.any(AbortSignal))
+  })
+
+  it('requests a new live set after each newly completed Turn', async () => {
+    const requestQuestions = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        value: response('followup', ['context-a', 'context-b', 'global-a', 'global-b']),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: response('followup', ['context-c', 'context-d', 'global-c', 'global-d']),
+      })
+    const view = render(<QuestionSuggestions {...props({ requestQuestions, turnEndSeq: 23 })} />)
+    await waitFor(() => { expect(view.getByText('中文 context-a')).toBeTruthy() })
+
+    view.rerender(<QuestionSuggestions {...props({ requestQuestions, turnEndSeq: 31 })} />)
+    await waitFor(() => { expect(view.getByText('中文 context-c')).toBeTruthy() })
+    expect(requestQuestions).toHaveBeenCalledTimes(2)
+    expect(requestQuestions).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: 'followup', turnEndSeq: 31, excludeIds: [],
+    }), expect.any(AbortSignal))
+  })
+
   it('switches language in place without changing semantic ids or issuing another request', async () => {
     const requestQuestions = vi.fn().mockResolvedValue({
       ok: true,

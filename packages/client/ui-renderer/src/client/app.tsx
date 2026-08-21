@@ -33,7 +33,13 @@ export function buildRenderApp(deps: AssemblyDeps): () => ReactNode {
       'ui/product-title',
       () => process.env.DSH_CLIENT_TITLE ?? 'DSH Local Build',
     )
-    return <DocumentTitle productTitle={productTitle} {...title === undefined ? {} : { title }} />
+    const documentTitle = ctx.waterfall(
+      'ui/document-title',
+      title,
+      productTitle,
+      () => title === undefined ? productTitle : `${title} — ${productTitle}`,
+    )
+    return <DocumentTitle documentTitle={documentTitle} productTitle={productTitle} />
   }
   return () => (
     <>
