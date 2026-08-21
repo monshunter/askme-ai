@@ -102,6 +102,17 @@ describe('sessions.fork', () => {
     await ctx.fiber.dispose()
   })
 
+  it('uses a transport-preallocated child Session id', async () => {
+    const ctx = await composed()
+    const source = liveAgent(ctx, 'session-preallocated-source', 1)
+    const childSessionId = sid('session-preallocated-child')
+    const response = await api(ctx).sessions.fork(request({ sessionId: source.id, childSessionId }))
+
+    expect(response.result).toMatchObject({ ok: true, value: { sessionId: childSessionId } })
+    expect(ctx.sessions.get(childSessionId)?.header.parentSession).toBe(source.id)
+    await ctx.fiber.dispose()
+  })
+
   it('attaches a subagent fork to its nearest workspace-owning ancestor', async () => {
     const accounted: SessionId[] = []
     const attachSession = vi.fn<(sessionId: SessionId) => Promise<void>>()

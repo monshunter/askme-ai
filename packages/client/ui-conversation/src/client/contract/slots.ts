@@ -172,6 +172,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
     /**
+     * Blank-session headline beside the brand mark. Declared by this
+     * package's `conversation` entry; the shell supplies the standard
+     * headline and preview badge as its fallback.
+     */
+    'conversation.hero.headline': { kind: 'single'; scope: 'root'; owner: HeroHeadlineOwnerProps }
+    /**
      * The agent-preset chip beside the workspace picker on the new-session
      * screen. Root scope: no session exists yet, so the choice is staged for
      * the next one rather than applied to a current one.
@@ -461,7 +467,12 @@ export interface ConversationInjected {
    * plugin raised one; the reason is the blocker's own localized copy, which
    * the root renders as the inert composer's placeholder.
    */
-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
+  hooks: {
+    /** This composition has an occupant for the optional Workspace picker seat. */
+    workspacePicker: ObservableSnapshot<boolean>
+    /** Current model-selection or route block for this Session. */
+    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
+  }
 }
 
 /** Business callbacks injected into the strict Session body seat. */
@@ -611,6 +622,12 @@ export interface HeroBrandMarkOwnerProps {
   className?: string | undefined
 }
 
+/** Presentation props supplied to the blank-session headline occupant. */
+export interface HeroHeadlineOwnerProps {
+  /** Host CSS class preserving the native headline grid placement and typography. */
+  className?: string | undefined
+}
+
 /**
  * Full conversation-slot component props: runtime & child-render (view ring
  * + composer chain/bar + input-region + hero picker slots) & store & injected
@@ -624,6 +641,7 @@ export type ConversationSlotProps =
     | 'conversation.input.dock' | 'conversation.composer.dock'
     | 'conversation.input.left' | 'conversation.input.right'
     | 'conversation.hero.brand.mark'
+    | 'conversation.hero.headline'
     | 'conversation.hero.workspace'
     | 'conversation.hero.agentPreset'
   >

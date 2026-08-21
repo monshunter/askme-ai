@@ -97,6 +97,8 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/client/ui-settings-plugin-inventory': { kind: 'none', reason: 'Browser-side inventory projection; registers nothing model-facing.' },
   'packages/client/locale': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/web': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
+  'packages/zhiwo/product': { kind: 'indirect', reason: 'The host plugin registers a Workspace; the bundle patch selects a preset whose plugins own every model-facing contribution.' },
+  'packages/zhiwo/ui': { kind: 'none', reason: 'Browser-side brand occupants and title lifecycle; registers nothing model-facing.' },
   'packages/examples/agent-spine-demo': { kind: 'indirect', reason: 'The bundle only mounts model-facing child plugins.' },
   'packages/context/file-reference': { kind: 'indirect', reason: 'The discovery seam and grammar delegate model guidance to the composed provider.' },
   'packages/fs/fs': { kind: 'indirect', reason: 'The service interface delegates model rendering to dsh-tool-fs.' },

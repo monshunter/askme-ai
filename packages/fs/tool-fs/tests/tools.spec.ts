@@ -98,16 +98,24 @@ class FakeFs extends FileSystem {
   }
 }
 
-async function setup() {
+async function setup(config: ToolFs.Config = {}) {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(FakeFs)
   await ctx.plugin(FsPolicy)
-  await ctx.plugin(ToolFs)
+  await ctx.plugin(ToolFs, config)
   const fs = ctx.fs as FakeFs
   return { ctx, fs }
 }
+
+describe('composition', () => {
+  it('can mount the native reader without mutation tools', async () => {
+    const { ctx } = await setup({ mutations: false })
+    expect(ctx.tools.schemas().map(schema => schema.name)).toEqual(['read'])
+    expect(renderPrompt(await ctx.systemPrompt.assemble())).not.toContain('Use the write tool')
+  })
+})
 
 let callCounter = 0
 function call(ctx: Context, name: string, args: unknown, agent?: object) {

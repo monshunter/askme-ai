@@ -4,6 +4,7 @@
 // owned draft, and the hero workspace picker (switching = retargetWorkspace).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS,
@@ -98,6 +99,8 @@ function mount(
     summaryOrigin?: 'subagent'
     /** A composer block another plugin raised for this session. */
     composerBlock?: { reason: string }
+    /** Whether this composition supplies the optional Workspace picker. */
+    workspacePicker?: boolean
     /** Mutable view ledger used by registration-order regressions. */
     viewTabs?: ViewTab[]
   } = {},
@@ -139,12 +142,13 @@ function mount(
   /** Owner share handed to the two composer tool-row seats, per render. */
   const seatOwners: { key: string; owner: unknown }[] = []
   let pickerOwner: unknown
-  const renderSlot = ((key: string, owner: object, opts?: { only?: string }) => {
+  const renderSlot = ((key: string, owner: object, opts?: { only?: string; fallback?: ReactNode }) => {
     slotCalls.push(key)
     if (key === 'conversation.input.model' || key === 'conversation.input.plan') {
       seatOwners.push({ key, owner })
     }
     if (key === 'conversation.hero.workspace') { pickerOwner = owner; return null }
+    if (key === 'conversation.hero.headline') return opts?.fallback ?? null
     if (key === 'conversation.session.header') {
       return (
         <ConversationSessionHeader
@@ -242,6 +246,7 @@ function mount(
     useSessions: bindSnapshotSelector(sessions),
     useWorkspaces: bindSnapshotSelector(workspaces),
     useProjection: (() => undefined),
+    useWorkspacePicker: select => select(options.workspacePicker ?? true),
     useComposerBlock: select => select(options.composerBlock),
     useInput,
     inputActions,
@@ -260,11 +265,18 @@ function mount(
 
 describe('Hero chrome', () => {
   it('renders the English preview badge through the hero locale seat', () => {
-    const renderSlot = vi.fn<HeroShellProps['renderSlot']>(() => null)
-    const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} />)
+    const renderSlot = vi.fn((
+      _key: string,
+      _owner: object,
+      options?: { fallback?: ReactNode },
+    ) => options?.fallback ?? null)
+    const view = render(<HeroShell
+      t={makeTranslate(en, commonEn)}
+      renderSlot={renderSlot as unknown as HeroShellProps['renderSlot']}
+    />)
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
-    expect(renderSlot).toHaveBeenCalledOnce()
+    expect(renderSlot).toHaveBeenCalledTimes(2)
     expect(renderSlot.mock.calls[0]?.[0]).toBe('conversation.hero.brand.mark')
     const brandMarkOwner = renderSlot.mock.calls[0]?.[1]
     if (brandMarkOwner === undefined || !('size' in brandMarkOwner) || !('className' in brandMarkOwner)) {
@@ -273,6 +285,13 @@ describe('Hero chrome', () => {
     expect(brandMarkOwner.size).toBe(34)
     expect(brandMarkOwner.className).toBeTypeOf('string')
     expect(renderSlot.mock.calls[0]?.[2]?.fallback).toBeTruthy()
+    expect(renderSlot.mock.calls[1]?.[0]).toBe('conversation.hero.headline')
+    const headlineOwner = renderSlot.mock.calls[1]?.[1]
+    if (headlineOwner === undefined || !('className' in headlineOwner)) {
+      throw new Error('hero headline owner must provide className')
+    }
+    expect(headlineOwner.className).toBeTypeOf('string')
+    expect(renderSlot.mock.calls[1]?.[2]?.fallback).toBeTruthy()
   })
 })
 
@@ -497,6 +516,18 @@ describe('ConversationRoot resident composer', () => {
     // The agent-preset chip sits in the same row, for the same reason: both
     // choices are only open before the first message.
     expect(b.slotCalls).toContain('conversation.hero.agentPreset')
+  })
+
+  it('omits every Workspace picker surface when no picker plugin is composed', () => {
+    const b = mount(
+      conversationSnapshot({ composerPhase: 'blank', blank: true }),
+      undefined,
+      undefined,
+      { workspacePicker: false },
+    )
+    expect(b.view.queryByRole('button', { name: '选择工作区' })).toBeNull()
+    expect(b.slotCalls).not.toContain('conversation.hero.workspace')
+    expect(b.view.getByRole('textbox')).toBeTruthy()
   })
 
   it('prompt failure renders the promptError strip (ordinary failure, no transaction UI)', () => {

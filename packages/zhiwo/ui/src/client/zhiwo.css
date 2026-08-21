@@ -1,0 +1,5 @@
+[data-composer-leading-controls],
+[data-context-meter],
+[data-session-stats] {
+  display: none !important;
+}

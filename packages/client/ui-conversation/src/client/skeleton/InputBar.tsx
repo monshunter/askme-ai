@@ -693,7 +693,7 @@ export function InputBar({
           </div>
         </div>
         <div className={css.row}>
-          <div className={css.tools}>
+          <div className={css.tools} data-composer-leading-controls>
             <Tooltip label={t('input.commands')} side="top" delayMs={500}>
               <button
                 type="button"

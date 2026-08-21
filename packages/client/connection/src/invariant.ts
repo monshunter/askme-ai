@@ -15,11 +15,10 @@ export const name = 'client-connection-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: the wire layer emits no cordis events and owns no
- * mutable cross-plugin relation — stream/reconnect sequencing is exercised
- * directly by its behavior specs, rpcId round-trip discipline is owned by the
- * apiproxy contract layer, and the node half's single route registration's
- * register/dispose symmetry is audited by the webserver package's invariant.
+ * No runtime invariant: the wire layer emits no Cordis events. Behavior specs
+ * exercise stream/reconnect sequencing and the single access-policy slot's
+ * duplicate/disposal lifecycle. The API Proxy owns rpcId round trips, and the
+ * Web Server invariant audits the node half's route registration lifecycle.
  */
 const install: InvariantInstaller = () => {}
 

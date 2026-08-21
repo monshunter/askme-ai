@@ -1,110 +1,91 @@
-/** Signed guest-cookie identity and request-forgery protection for the Public Runtime. */
+/** Browser visitor identity derived from one private Host key and an opaque cookie subject. */
 
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
-/** Server-resolved guest identity returned for one HTTP request. */
-export interface GuestIdentity {
-  guestId: string
-  csrfToken: string
-  setCookie?: string
-}
+const COOKIE_NAME = 'zhiwo_guest'
+const COOKIE_MARKER = 'zhiwo_guest_ready'
+const SUBJECT_PATTERN = /^[A-Za-z0-9_-]{22}$/
+const OWNER_TAG_BYTES = 18
 
-function hmac(secret: Buffer, purpose: string, value: string): string {
-  return createHmac('sha256', secret).update(purpose).update('\0').update(value).digest('base64url')
+function hmac(secret: Buffer, purpose: string, subject: string): Buffer {
+  return createHmac('sha256', secret).update(purpose).update('\0').update(subject).digest()
 }
 
 function parseCookies(header: string | undefined): Map<string, string> {
   const cookies = new Map<string, string>()
   for (const part of header?.split(';') ?? []) {
     const separator = part.indexOf('=')
-    if (separator <= 0) continue
+    if (separator < 1) continue
     const name = part.slice(0, separator).trim()
     const value = part.slice(separator + 1).trim()
-    if (name.length > 0) cookies.set(name, value)
+    if (name !== '') cookies.set(name, value)
   }
   return cookies
 }
 
-function verifySubject(secret: Buffer, sealed: string | undefined, maxAgeDays: number): string | undefined {
-  if (sealed === undefined) return undefined
-  const [version, subject, issuedAtText, signature, ...extra] = sealed.split('.')
-  if (version !== 'v1' || subject === undefined || issuedAtText === undefined
-    || signature === undefined || extra.length > 0) return undefined
-  if (!/^[A-Za-z0-9_-]{43}$/u.test(subject) || !/^[A-Za-z0-9_-]{43}$/u.test(signature)) return undefined
-  if (!/^[1-9][0-9]{9,12}$/u.test(issuedAtText)) return undefined
-  const issuedAt = Number(issuedAtText)
-  const now = Date.now()
-  if (!Number.isSafeInteger(issuedAt) || issuedAt > now + 60_000
-    || now - issuedAt > maxAgeDays * 86_400_000) return undefined
-  const expected = hmac(secret, 'cookie', `${subject}.${issuedAtText}`)
-  const actualBytes = Buffer.from(signature)
-  const expectedBytes = Buffer.from(expected)
-  if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) return undefined
-  return subject
+function validSignature(secret: Buffer, subject: string, signature: string): boolean {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(signature)) return false
+  const received = Buffer.from(signature, 'base64url')
+  const expected = hmac(secret, 'cookie', subject)
+  return received.byteLength === expected.byteLength && timingSafeEqual(received, expected)
 }
 
-/**
- * Resolve a valid cookie or issue a new random subject without exposing it as the database key.
- * @param cookieHeader - incoming Cookie header.
- * @param cookieName - deployment cookie name.
- * @param secret - at least 32 bytes of trusted secret material.
- * @param maxAgeDays - persistent-cookie lifetime.
- * @param secure - whether to require an HTTPS transport for the cookie.
- * @param previousSecret - optional previous signing key accepted only to rotate a valid cookie to the current key.
- * @returns HMAC-derived database id, CSRF token, and optional Set-Cookie value.
- */
-export function resolveGuestIdentity(
-  cookieHeader: string | undefined,
-  cookieName: string,
-  secret: Buffer,
-  maxAgeDays: number,
-  secure = true,
-  previousSecret?: Buffer,
-): GuestIdentity {
-  const sealed = parseCookies(cookieHeader).get(cookieName)
-  const currentSubject = verifySubject(secret, sealed, maxAgeDays)
-  const previousSubject = currentSubject === undefined && previousSecret !== undefined
-    ? verifySubject(previousSecret, sealed, maxAgeDays)
-    : undefined
-  const subject = currentSubject ?? previousSubject ?? randomBytes(32).toString('base64url')
-  const guestId = createHash('sha256').update('zhiwo-guest\0').update(subject).digest('base64url')
-  const csrfToken = hmac(secret, 'csrf', subject)
-  if (currentSubject !== undefined) return { guestId, csrfToken }
-  const issuedAt = String(Date.now())
-  const rotated = `v1.${subject}.${issuedAt}.${hmac(secret, 'cookie', `${subject}.${issuedAt}`)}`
-  const attributes = [
-    `${cookieName}=${rotated}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${Math.floor(maxAgeDays * 86_400)}`,
-    ...(secure ? ['Secure'] : []),
-  ]
-  return { guestId, csrfToken, setCookie: attributes.join('; ') }
+/** One authenticated browser visitor and an optional cookie upgrade. */
+export interface VisitorIdentity {
+  /** Prefix every native Session id owned by this browser carries. */
+  readonly sessionPrefix: string
+  /** Signed HttpOnly replacement for a missing or bootstrap cookie. */
+  readonly setCookie?: string
 }
 
-/**
- * Validate the exact public origin and CSRF token for a state-changing request.
- * @param method - uppercase HTTP method.
- * @param headers - origin, referer, and token headers.
- * @param publicOrigin - configured external origin.
- * @param expectedToken - subject-bound expected token.
- */
-export function assertWriteRequest(
-  method: string,
-  headers: { origin?: string; referer?: string; csrfToken?: string },
-  publicOrigin: URL,
-  expectedToken: string,
-): void {
-  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
-  const requestOrigin = headers.origin ?? (headers.referer === undefined
-    ? undefined
-    : new URL(headers.referer).origin)
-  if (requestOrigin !== publicOrigin.origin) throw new Error('ZHIWO_ORIGIN_REJECTED')
-  if (headers.csrfToken === undefined) throw new Error('ZHIWO_CSRF_REJECTED')
-  const actual = Buffer.from(headers.csrfToken)
-  const expected = Buffer.from(expectedToken)
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
-    throw new Error('ZHIWO_CSRF_REJECTED')
+/** Stable browser identity resolver; it persists no visitor or Session records. */
+export class VisitorIdentities {
+  /**
+   * @param secret - Host-private 256-bit key persisted under DSH_HOME.
+   * @param cookieMaxAgeSeconds - browser identity lifetime.
+   */
+  constructor(
+    private readonly secret: Buffer,
+    private readonly cookieMaxAgeSeconds: number,
+  ) {
+    if (secret.byteLength !== 32) throw new Error('zhiwo identity secret must contain exactly 32 bytes')
+  }
+
+  /**
+   * Resolve a signed cookie or the short-lived script bootstrap value.
+   * @param cookieHeader - HTTP Cookie header.
+   * @returns authenticated identity and a signed replacement when required.
+   */
+  resolve(cookieHeader: string | undefined): VisitorIdentity {
+    const value = parseCookies(cookieHeader).get(COOKIE_NAME)
+    const parts = value?.split('.')
+    let subject: string | undefined
+    let replace = true
+    if (parts?.length === 3 && parts[0] === 'v1' && SUBJECT_PATTERN.test(parts[1] ?? '')
+      && validSignature(this.secret, parts[1] as string, parts[2] as string)) {
+      subject = parts[1]
+      replace = false
+    } else if (parts?.length === 2 && parts[0] === 'v0' && SUBJECT_PATTERN.test(parts[1] ?? '')) {
+      subject = parts[1]
+    }
+    subject ??= randomBytes(16).toString('base64url')
+    const tag = hmac(this.secret, 'session-owner', subject).subarray(0, OWNER_TAG_BYTES).toString('base64url')
+    return {
+      sessionPrefix: `zhiwo-${tag}-`,
+      ...replace ? { setCookie: this.sealedCookie(subject) } : {},
+    }
+  }
+
+  /**
+   * Script inserted before the native browser modules to establish one subject for concurrent API and WebSocket opens.
+   * @returns Inline script that seeds the short-lived bootstrap cookie.
+   */
+  bootstrapScript(): string {
+    return `<script>(()=>{if(document.cookie.split('; ').includes('${COOKIE_MARKER}=1'))return;const b=new Uint8Array(16);crypto.getRandomValues(b);const s=btoa(String.fromCharCode(...b)).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');document.cookie='${COOKIE_NAME}=v0.'+s+'; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; SameSite=Strict';document.cookie='${COOKIE_MARKER}=1; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; SameSite=Strict'}</script>`
+  }
+
+  private sealedCookie(subject: string): string {
+    const signature = hmac(this.secret, 'cookie', subject).toString('base64url')
+    return `${COOKIE_NAME}=v1.${subject}.${signature}; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; HttpOnly; SameSite=Strict`
   }
 }

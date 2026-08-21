@@ -9,16 +9,12 @@
   ],
   "references": [
     { "path": "../../../vendor/cordis" },
-    { "path": "../../core/agent" },
-    { "path": "../../core/agent-loop" },
-    { "path": "../../core/session" },
-    { "path": "../../core/system-prompt" },
-    { "path": "../../core/tools" },
-    { "path": "../../compaction/compaction-basic" },
-    { "path": "../../compaction/compaction-tool-result-pruner" },
-    { "path": "../../llm/llm" },
-    { "path": "../../llm/llm-deepseek" },
-    { "path": "../../llm/token-meter" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../runtime-diagnostics/invariants" },
+    { "path": "../../client/connection/tsconfig.host.json" },
+    { "path": "../../host/apiproxy" },
+    { "path": "../../host/webserver" },
+    { "path": "../../util/home-paths" },
+    { "path": "../../workspace/workspace" }
   ]
 }

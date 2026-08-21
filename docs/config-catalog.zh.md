@@ -2528,6 +2528,10 @@ export interface Config {
   readMaxBytes?: number
   /** Files at or above this size stream instead of loading whole into memory. */
   readStreamMinSize?: number
+  /** Register the `write` and `edit` tools in addition to `read`. */
+  mutations?: boolean
+  /** Register `read_image` while an attachment store is available. */
+  images?: boolean
 }
 ```
 
@@ -3186,6 +3190,26 @@ export interface Config {
 
 来源：[`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
+<a id="deepseek-aidsh-zhiwo-product"></a>
+
+## `@deepseek-ai/dsh-zhiwo-product`
+
+需要：`connection` · `webServer` · `workspaceRegistry`
+
+```ts config-catalog
+/** Zhiwo host configuration. */
+export interface Config {
+  /** Directory used as every new Zhiwo session's workspace. */
+  workspaceRoot?: string
+  /** Harness home containing the private identity key; omission follows DSH_HOME. */
+  dshHome?: string
+  /** Browser visitor lifetime in days. */
+  cookieMaxAgeDays?: number
+}
+```
+
+来源：[`packages/zhiwo/product/src/index.ts:23`](../packages/zhiwo/product/src/index.ts)
+
 ## 无配置的可加载插件
 
 这些插件通过 `cordis.yml` 中不含 `config:` 块的条目加载；它们未声明任何配置接口。
@@ -3259,6 +3283,7 @@ export interface Config {
 - `@deepseek-ai/dsh-tool-subagent-control` — 需要 `tools` · `subagents`（[`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts)）
 - `@deepseek-ai/dsh-user-questions`（[`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts)）
 - `@deepseek-ai/dsh-workspace` — 需要 `storageDomain` · `sessionPersistence`（[`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts)）
+- `@deepseek-ai/dsh-zhiwo-ui`（[`packages/zhiwo/ui/src/index.ts`](../packages/zhiwo/ui/src/index.ts)）
 
 ## Seam 包（不可直接加载）
 
@@ -3316,4 +3341,3 @@ export interface Config {
 - `@deepseek-ai/dsh-typert-generator`（[`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts)）
 - `@deepseek-ai/dsh-typert-protocol`（[`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts)）
 - `@deepseek-ai/dsh-typert-registry`（[`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts)）
-- `@deepseek-ai/dsh-zhiwo-product`（[`packages/zhiwo/product/src/index.ts`](../packages/zhiwo/product/src/index.ts)）

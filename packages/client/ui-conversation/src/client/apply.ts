@@ -174,6 +174,10 @@ export function apply(ctx: Context): void {
   // here, and the bar reads its own session's store. It cannot flow the other
   // way: this package must not import the plugins that would know.
   const composerBlocks = new ComposerBlockRegistry()
+  const workspacePicker = {
+    getSnapshot: () => slots.entries('conversation.hero.workspace').length > 0,
+    subscribe: (fn: () => void) => slots.subscribe('conversation.hero.workspace', fn),
+  }
 
   // The input machine feeds every session-scope slot
   // component through the standard provide channel — the 'input' hook plus
@@ -207,11 +211,15 @@ export function apply(ctx: Context): void {
       'conversation.input.left': { kind: 'list', scope: 'session' },
       'conversation.input.right': { kind: 'list', scope: 'session' },
       'conversation.hero.brand.mark': { kind: 'single', scope: 'root' },
+      'conversation.hero.headline': { kind: 'single', scope: 'root' },
       'conversation.hero.workspace': { kind: 'single', scope: 'root' },
       'conversation.hero.agentPreset': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
-      hooks: { composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
+      hooks: {
+        workspacePicker,
+        composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
+      },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaces.connectWorkspace(workspaceId)
         if (sessionId !== undefined && nextId !== sessionId) {

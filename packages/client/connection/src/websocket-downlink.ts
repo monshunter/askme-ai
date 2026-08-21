@@ -8,8 +8,21 @@ import type {
   ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { ConnectionApiHeaders } from './rpc.ts'
 
 type Frame = MuxFrame | HostFrame
+type StreamAccess = <F extends Frame>(
+  kind: 'mux' | 'host',
+  headers: ConnectionApiHeaders,
+  source: AsyncIterable<RpcRequest<F>>,
+) => AsyncIterable<RpcRequest<F>>
+
+function requestHeaders(req: IncomingMessage): ConnectionApiHeaders {
+  return Object.fromEntries(Object.entries(req.headers).map(([name, value]) => [
+    name,
+    Array.isArray(value) ? value.join(', ') : value,
+  ]))
+}
 
 function serverRequest(frame: RpcRequest<Frame>): ServerRequest {
   return {
@@ -52,8 +65,14 @@ export class WebSocketDownlinks {
   private readonly server = new WebSocketServer({ noServer: true })
   private readonly pumps = new Set<Promise<void>>()
 
-  /** @param api - host API supplying the typed event streams. */
-  constructor(private readonly api: ApiProxy) {}
+  /**
+   * @param api - host API supplying the typed event streams.
+   * @param access - deployment authorization applied before frames reach the socket.
+   */
+  constructor(
+    private readonly api: ApiProxy,
+    private readonly access: StreamAccess = (_kind, _headers, source) => source,
+  ) {}
 
   /**
    * Upgrade one socket and pump the mux stream until either side closes.
@@ -62,10 +81,10 @@ export class WebSocketDownlinks {
    * @param head - Bytes already read after the upgrade headers.
    */
   handleMux(req: IncomingMessage, socket: Duplex, head: Buffer): void {
-    this.upgrade(req, socket, head, signal => this.api.events.mux({
+    this.upgrade(req, socket, head, signal => this.access('mux', requestHeaders(req), this.api.events.mux({
       rpcId: RpcId(randomUUID()),
       payload: {},
-    }, signal))
+    }, signal)))
   }
 
   /**
@@ -75,10 +94,10 @@ export class WebSocketDownlinks {
    * @param head - Bytes already read after the upgrade headers.
    */
   handleHost(req: IncomingMessage, socket: Duplex, head: Buffer): void {
-    this.upgrade(req, socket, head, signal => this.api.events.host({
+    this.upgrade(req, socket, head, signal => this.access('host', requestHeaders(req), this.api.events.host({
       rpcId: RpcId(randomUUID()),
       payload: {},
-    }, signal))
+    }, signal)))
   }
 
   /**

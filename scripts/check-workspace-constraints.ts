@@ -53,7 +53,7 @@ const zhiwoRepositoryUrl = 'git+https://github.com/monshunter/deepseek-harness.g
 /** Private packages that participate in workspace checks but not releases. */
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** Product-only workspaces delivered as Zhiwo artifacts, not in the upstream npm family. */
-const zhiwoProductDirectories = new Set(['packages/zhiwo/product', 'apps/zhiwo'])
+const zhiwoProductDirectories = new Set(['packages/zhiwo/product', 'packages/zhiwo/ui'])
 /** npm namespace reserved for private experimental packages. */
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
 /** Directories whose packages this repository publishes: one release member each. */
@@ -163,9 +163,6 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   // sandbox-local resolves it through the package's ./runner export. tsdown
   // also shares its generated FFI code through a hashed runtime chunk.
   '@deepseek-ai/dsh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
-  // Knowledge conversion runs in a worker entry. Both package entries share
-  // the immutable compiler implementation through a hashed tsdown chunk.
-  '@deepseek-ai/dsh-zhiwo-product': ['lib/converter-worker.js', 'lib/knowledge-*.js'],
   // SQLite loads every statement from immutable package resources at runtime.
   '@deepseek-ai/dsh-session-persistence-sqlite': ['resources/sql/**/*.sql'],
   '@deepseek-ai/dsh-skill-badge': ['assets'],

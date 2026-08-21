@@ -1,46 +1,44 @@
-# 知我
+# 知我AI
 
 [English](README.md) | 中文
 
-知我（英文代码名 Askme）是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的一套只读个人知识问答产品外观。产品保留上游 Agent Loop、LLM 适配器、推理、工具调用、流式输出和会话事件行为，只替换 coding 产品暴露的实体、公开 API、持久化、命令和浏览器界面。
+知我AI 是原生 DeepSeek Harness Web 应用上的一层轻量配置与品牌覆盖。它通过普通的 `dsh web` 命令启动，沿用上游 Host、Agent Loop、Session、API 与浏览器客户端，并把 `userdata/` 作为默认 Workspace 打开。
 
-生产制品只有一个 `zhiwo` 命令，不包含工作区选择器、Shell、终端、Web 搜索、动态插件 loader、工作流、subagent 或 coding UI。模型在一个轮次内只能使用 revision 范围的 `read`、`glob` 和 `grep`；每个展示给访客的引用都必须对应本轮实际访问的来源。
+知我AI 没有 Revision、知识编译器、同步命令、生成语料、自建 API Server 或产品数据库。`userdata/` 下的文件就是事实来源，后续问答会读取文件的当前内容。
 
-## Run
+<a id="run-from-source"></a>
 
-### Run from source
+## 运行
 
-安装 Node.js 24 或受支持的 Node.js 22 版本及 pnpm，然后准备知识 revision 和产品构建：
+安装依赖、构建仓库，并提供 DeepSeek 凭据：
 
 ```sh
 pnpm install
 pnpm run build
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo sync --source ./userdata
+export DEEPSEEK_API_KEY=your_key
 ```
 
-将 `ZHIWO_COOKIE_SECRET` 设置为至少 32 字节，并提供 `ZHIWO_MODEL`、`ZHIWO_MODEL_API_KEY` 和使用 HTTPS 的 `ZHIWO_PUBLIC_ORIGIN`，然后启动产品：
+用知我AI Patch 启动原生 Web Profile：
 
 ```sh
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo serve
+DSH_HOME=.artifacts/zhiwo ZHIWO_WORKSPACE_ROOT=userdata \
+  pnpm dsh web --patch packages/zhiwo/product/cordis.patch.yml
 ```
 
-在回环地址进行本地开发时，设置 `ZHIWO_DEVELOPMENT=true` 并使用 HTTP Origin。关于编译限制、密钥轮换、备份、回滚、保留策略和生产接口验证，参见[运维指南](docs/user/zhiwo.md)。
+打开 `dsh web` 输出的 URL。快捷命令 `pnpm run zhiwo:demo` 执行同一条启动命令。测试时可让 `ZHIWO_WORKSPACE_ROOT` 指向其他目录，但产品默认值是 `userdata`。
 
-## 产品命令
+## 行为
 
-- `zhiwo sync [--check]` 将可变 `userdata/` 下的全部普通文件编译为一个不可变只读 revision。
-- `zhiwo serve [--dev]` 启动仅包含产品功能的 UI 和 API。
-- `zhiwo doctor` 校验 Current Revision 和统一的 SQLite 数据库。
-- `zhiwo gc [--dry-run]` 清理既非 Current Revision、也未被会话引用的 revision。
-- `zhiwo rollback <revision-id>` 为 New Sessions 原子选择一个保留且已校验的 Revision。
-- `zhiwo version` 打印产品版本和精确的官方上游 baseline。
+启动覆盖层通过原生 Workspace Registry 注册配置目录，原生浏览器会自动把初始 Session 连接到该 Workspace。浏览器只向用户展示会话，不显示 Workspace 名称、分组、搜索、新建、设置或选择器。随仓库交付的 `zhiwo` Agent Preset 只暴露维护中的 `read`、`glob` 与 `grep` 工具。模型工具目录中不存在文件写入、Shell、Web Search、Skill、Plan、Goal、Workflow、Job 或 Subagent。
 
-## 开发
+浏览器保留原生的会话、流式输出、历史、模型选择和 Session 行为。一个小型客户端插件在中文界面显示“知我AI”，在英文界面显示“AskmeAI”，并用本地化问候语替换通用预览标题，同时提供侧边栏语言切换。知我AI 界面不显示 Workspace 控件、Session Log 下载、命令／访问模式控件组、上下文用量圆环或统计行。
 
-`pnpm run zhiwo:test`、`zhiwo:build`、`zhiwo:surface` 和 `zhiwo:release` 是稳定的产品检查。仓库保留上游 developer harness，供选择性同步 baseline 和执行 Kernel 回归。知我随包携带原生 Agent Loop 所需的服务定义，但其装配、工具注册表、HTTP 路由、浏览器客户端和发布入口只暴露只读职业知识产品。
+每个浏览器 Profile 会获得一个匿名签名身份。知我AI 用该身份限定原生 Session ID、Session 列表、直接 Session 操作、Workspace 投影与两条事件流。一个浏览器无法读取、修改或接收另一个浏览器的对话。所有访问者会刻意读取同一个只读 `userdata/` Workspace；隔离对象是对话，而不是资料源。
 
-Fork 清单见[上游维护](UPSTREAM.md)、[包分类](docs/PACKAGE_CLASSIFICATION.md)、[上游差异](docs/UPSTREAM_DELTA.md)和[baseline 架构](docs/architecture/fork-baseline.md)。贡献者遵循 [AGENTS.md](AGENTS.md)。
+原生 DSH 会把 Session 和 Workspace 元数据保存在 `DSH_HOME` 下。如果同一台机器还使用其他 DSH Profile，请保留独立的知我AI Home。
 
-## 许可证
+## 范围
 
-[MIT](LICENSE)。第三方依赖及其许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；每次产品构建还会生成 SPDX SBOM 和产物校验和。
+知我AI 继承原生 DSH 的文本文件读取与搜索行为。它不会为 PDF、Office、压缩包、图片或其他二进制文件生成模型可读副本。匿名浏览器 Session 隔离属于该组合。账号登录、授权管理、流量限制、TLS 终止与公开部署加固仍属于部署问题。
+
+实现细节见[知我AI 包概览](packages/zhiwo/README.md)与[用户指南](docs/user/zhiwo.md)。

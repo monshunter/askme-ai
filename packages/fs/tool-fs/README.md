@@ -26,6 +26,8 @@ All keys are optional; the defaults are the shipped read caps.
 | `readMaxLineLength` | `2000` | Characters kept per line before truncation (the suffix names the cap). |
 | `readMaxBytes` | `51200` | Byte cap on one `read` call's selected lines; overflow ends the window with a "capped" footer. |
 | `readStreamMinSize` | `10485760` | Files at or above this size (or with unknown size) stream instead of loading whole into memory. |
+| `mutations` | `true` | Register `write` and `edit`. Set `false` for a composition that needs only the native text reader. |
+| `images` | `true` | Register `read_image` while an attachment store is available. Set `false` for a text-only composition. |
 
 ## Tools (schemas per [the filesystem tool schemas Agent Note](../../../.agents/notes/implemented/feature/2026-06-17-filesystem-tool-schemas.md))
 
@@ -67,7 +69,7 @@ The package root exports only the Cordis plugin contract (`name`, `inject`, `Con
 
 #### What the model sees
 
-Every request in this plugin's registration scope receives the independently registered read, write, and edit guidance below. Scoped tool restrictions can hide schemas without removing these sections.
+Every request in this plugin's registration scope receives guidance for the tools that configuration registered. With `mutations: false`, the write and edit schemas and guidance are absent; with `images: false`, `read_image` is absent.
 
 ##### Read guidance
 
@@ -99,7 +101,7 @@ Prefix-stable while the plugin scope and guidance text are unchanged. Tool restr
 
 #### What the model sees
 
-The model sees the generated [`read`, `read_image`, `write`, and `edit` schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-fs), with snake_case arguments. `read_image` appears only while a durable attachment store is mounted; the schema itself is route-independent, and the strict gate refuses at execution. Scoped tool restrictions can remove any definition for one agent.
+The model sees the generated [`read`, `read_image`, `write`, and `edit` schemas](../../../docs/tool-catalog.md#deepseek-aidsh-tool-fs), with snake_case arguments. `read_image` appears only when `images` is enabled and a durable attachment store is mounted; the schema itself is route-independent, and the strict gate refuses at execution. Scoped tool restrictions can remove any definition for one agent.
 
 #### Token effect
 

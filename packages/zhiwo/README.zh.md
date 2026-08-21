@@ -1,11 +1,12 @@
-# 知我包
+# 知我AI 包
 
 [English](README.md) | 中文
 
-`zhiwo/` 分组负责构建在上游 harness 服务之上的固定产品层。
+`zhiwo/` 分组负责应用到原生 `dsh web` 上的小型知我AI 产品覆盖层；`zhiwo` 仍是内部包与 Preset ID。
 
-| 包 | 职责 | Cordis 服务 |
-|---|---|---|
-| [`product/`](product/README.md) | 知识编译器、访客身份、统一 SQLite 数据、revision 范围工具、Agent Loop 组合与窄 HTTP 服务 | 无；该包负责产品组合 |
+| 包 | 职责 |
+|---|---|
+| [`product/`](product/README.md) | 注册原始 Workspace，并交付 Web Profile Patch。 |
+| [`ui/`](ui/README.md) | 填充原生 Brand 与问候语 Slot、呈现 Session 历史和语言切换，并移除不需要的 Workspace 与诊断界面元素。 |
 
-上游 coding 包作为 baseline 维护的源码输入保留；除非本表和[包分类](../../docs/PACKAGE_CLASSIFICATION.md)另有说明，知我应用不会依赖这些包。
+Agent 组合由随仓库交付的 [`zhiwo` Preset](../../apps/cli/config/agent-presets/zhiwo/agent.cordis.yml) 定义。原生 Host、API、Agent Loop、Persistence 与浏览器包仍是实际实现；本分组不复制这些能力。

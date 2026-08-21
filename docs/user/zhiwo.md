@@ -1,146 +1,50 @@
-# Operate Zhiwo
+# Use AskmeAI
 
 English | [中文](zhiwo.zh.md)
 
-This runbook covers the single-node Zhiwo 0.4 product. Run owner commands from a fixed checkout whose `UPSTREAM_BASE` and `VERSION` have been reviewed.
+This tutorial starts the AskmeAI composition on the native DSH Web application and explains its raw-Workspace behavior.
 
-## Install and configure
+## Prerequisites
 
-Install the locked workspace and build the product. The build creates the product CLI, browser assets, manifest, surface snapshot, SPDX SBOM, and `SHA256SUMS`.
-
-```sh
-corepack enable
-pnpm install --frozen-lockfile
-pnpm run zhiwo:build
-```
-
-The public runtime needs only state, immutable knowledge, model configuration, and secrets. Keep owner source variables out of the `serve` environment.
+Use a supported Node.js release, install pnpm dependencies, build the repository, and set `DEEPSEEK_API_KEY`. Place model-readable text anywhere below `userdata/`.
 
 ```sh
-export ZHIWO_PUBLIC_ORIGIN=https://askme.example.com
-export ZHIWO_LISTEN_HOST=127.0.0.1
-export ZHIWO_LISTEN_PORT=13081
-export ZHIWO_METRICS_PORT=13082
-export ZHIWO_STATE_ROOT=/var/lib/zhiwo/state
-export ZHIWO_KNOWLEDGE_ROOT=/var/lib/zhiwo/knowledge
-export ZHIWO_COOKIE_SECRET_FILE=/run/secrets/zhiwo_cookie_secret
-export ZHIWO_MODEL=deepseek-chat
-export ZHIWO_MODEL_API_KEY_FILE=/run/secrets/model_api_key
+pnpm install
+pnpm run build
+export DEEPSEEK_API_KEY=your_key
 ```
 
-## Prepare userdata and compiler settings
+## Start AskmeAI
 
-`userdata/` accepts arbitrary ordinary files and directories. Every ordinary file below this root enters the same read-only Agent data set; there are no file-level private, citation-only, or public classes. Symlinks, hardlinks, devices, sockets, FIFOs, `.git` internals, and the `zhiwo.yaml` control file are not sources. Text artifacts are previewable and cited original files are downloadable.
-
-```yaml
-version: 1
-compiler:
-  max_file_bytes: 52428800
-  max_total_bytes: 2147483648
-  max_archive_entries: 0
-  git:
-    enabled: true
-    include_history_summary: true
-    max_commits: 5000
-starter_questions:
-  - 他最有代表性的项目是什么？
-  - 他适合 Agent Platform 岗位吗？
-```
-
-Text, PDF, DOCX, PPTX, and XLSX produce bounded text artifacts. Unknown formats remain catalogued and downloadable but do not provide model-readable text. Secret-like content inside `userdata/` is counted in the owner audit but is not filtered or blocked: placing a file under this root authorizes Agent reading. Git analysis uses local read-only commands with hooks, credential helpers, prompts, global configuration, and network operations disabled; it never publishes remote URLs.
-
-## Validate, publish, and roll back a revision
-
-Run sync in an owner or CI environment that mounts raw data and the knowledge volume but has no model key, Cookie secret, session database, SSH agent, or Docker socket. The `--check` run performs the compiler and audit without changing Current. Invalid compiler configuration, parser failure, checksum failure, or lock contention leaves Current unchanged.
+Run the ordinary Web command with the AskmeAI patch:
 
 ```sh
-export ZHIWO_SOURCE_ROOT=/app/userdata
-export ZHIWO_CONFIG_FILE=/app/userdata/zhiwo.yaml
-export ZHIWO_KNOWLEDGE_ROOT=/var/lib/zhiwo/knowledge
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo sync --check --json
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo sync --json
+DSH_HOME=.artifacts/zhiwo ZHIWO_WORKSPACE_ROOT=userdata \
+  pnpm dsh web --patch packages/zhiwo/product/cordis.patch.yml
 ```
 
-To roll back, choose a retained id from `knowledge/revisions/`. The command validates the manifest, catalog, audit, and artifacts before atomically changing Current. Existing sessions keep their original revision; only new sessions use the rolled-back Current.
+Open the URL printed by the command. The client connects the initial native Session to the registered `userdata/` Workspace; no directory selection or import step is required. Workspace names, groups, search, creation, settings, and pickers are not rendered in AskmeAI. Session-log download, command/access-mode controls, the context meter, and the statistics strip are also absent; model selection and sending remain available. Use the language action at the bottom of the sidebar to switch the whole interface and the Session history between Chinese and English. The sidebar name is `AskmeAI` in English and `知我AI` in Chinese; the blank-session headline is the localized greeting `Hello, I'm AskmeAI` or `你好，我是知我AI`, with no preview badge. Users see only their conversations. `pnpm run zhiwo:demo` is a shortcut for the same command.
 
-```sh
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo rollback rev_example
-```
+Each browser profile receives an anonymous identity. Its native Session history is private to that profile, while every visitor reads the same read-only `userdata/` Workspace.
 
-## Start, observe, and diagnose
+## Ask questions
 
-`serve` verifies release checksums, the fixed version/baseline, database schema, Current revision, empty global tool registry, exact public routes, browser chunks, model route, state permissions, and Cookie strength before listening. It refuses owner source variables instead of mounting raw data into the public process.
+Ask about facts present in the Workspace. The AskmeAI Agent discovers raw files with `glob` and `grep`, reads relevant sections with `read`, and cites important evidence as relative `path:line` locations. It reports missing evidence instead of inventing an answer.
 
-```sh
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo doctor
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo serve
-curl -fsS http://127.0.0.1:13081/health/live
-curl -fsS http://127.0.0.1:13081/health/ready
-curl -fsS http://127.0.0.1:13082/metrics
-```
+The model cannot edit files or use Shell, Web search, Skills, plans, goals, workflows, jobs, or Subagents. Browser controls for those capabilities are absent from this composition.
 
-JSON request logs contain a random request id, normalized low-cardinality route, status, latency, and safe error code; they omit prompts, answers, source text, paths, Cookies, visitor ids, IP addresses, provider bodies, and secrets. `X-Request-Id` correlates a browser failure with the log and is the MVP trace id. Alert on sustained model failures, rate-limit growth, readiness failure, active generation saturation, sync failure, database integrity failure, and revision GC failure. The metrics listener binds loopback and must not be proxied publicly.
+## Update the data
 
-## Rotate secrets
+Edit, add, rename, or remove files directly in `userdata/`. A later question reads the current filesystem state; there is no sync command or generated corpus to refresh. Existing answers remain Session history and are not rewritten when a source file changes.
 
-Rotate the model key file and restart `serve`; knowledge revisions do not change. Rotate the Cookie secret file and restart only after announcing that existing anonymous identity Cookies become invalid and visitors receive new isolated identities. The runtime never guesses an old identity from IP, user agent, localStorage, or browser fingerprint. Use filesystem or secret-manager atomic replacement and never print either value through `doctor` or logs.
+`ZHIWO_WORKSPACE_ROOT` may point at another existing directory for local testing. Relative paths resolve from the directory where the command starts.
 
-## Back up and restore SQLite
+## State and formats
 
-Use Node's SQLite online backup API, encrypt the resulting file with deployment-owned tooling, and define a backup expiry window. Do not copy a live DB/WAL pair directly.
+Native DSH stores Workspace metadata and Session logs below `DSH_HOME`. AskmeAI stores one private identity-signing key there and uses owner-prefixed native Session ids; it does not add a visitor, message, or Session database. Use the dedicated `.artifacts/zhiwo` home to keep this state separate from other profiles.
 
-```sh
-mkdir -p backup
-node --input-type=module -e '
-import { backup, DatabaseSync } from "node:sqlite";
-const source = new DatabaseSync("runtime/state/zhiwo.db", { readOnly: true });
-await backup(source, "backup/zhiwo.db");
-source.close();
-'
-```
+AskmeAI inherits native DSH text reading and search. It does not convert PDF, Office, archive, image, or other binary formats; provide a text representation in the Workspace when the Agent must inspect that content.
 
-For recovery, stop `serve`, restore the backup into a new file through the same API, run SQLite integrity and foreign-key checks, retain the old DB/WAL files in a quarantine directory, atomically place the validated file, restart, and run `zhiwo doctor`. A restore drill is complete only after a retained session can be read and a newly deleted session remains absent after another restart.
+## Deployment limit
 
-## Delete data and run retention
-
-The browser's clear-current, delete-one, and delete-all actions cancel active generation, wait for settlement, and physically cascade messages, upstream events, source access, citations, and grants from online SQLite. Repeating a delete is safe and does not reveal whether another visitor owns an id. Offline encrypted backups expire under the deployment's disclosed window.
-
-```sh
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo gc --dry-run
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo gc
-```
-
-GC applies the configured session retention, removes orphan guests, preserves Current, preserves the newest configured revision count, and refuses to collect any session-referenced revision. Never remove a revision directory manually.
-
-## Handle failures and source mistakes
-
-### Model provider failure
-
-Keep the fixed route; do not fall back to an unreviewed model. History, cited sources, and deletion remain available while new generation returns a stable product error. Verify endpoint reachability from the public network policy, key-file permissions, quota, model id, and low-cardinality metrics without logging a provider body.
-
-### Parser or sync failure
-
-Inspect only the aggregate audit counts and logical warning names. Keep the old Current serving, correct the offending file or compiler setting, rerun `sync --check`, then publish. Do not enable a runtime parser or shell as a workaround.
-
-### Unintended source publication
-
-Remove the unintended file from `userdata/`, publish a corrected revision, and atomically roll back if necessary. Delete affected visitor sessions and grants, rotate any exposed credentials, review access logs without content, determine encrypted-backup expiry, and preserve incident evidence outside the public runtime. A directory name or configuration rule cannot hide a source: membership under `userdata/` always means Agent-readable.
-
-## Update the upstream baseline
-
-Use an `upstream-sync/<version>` branch. Review the candidate official commit, update `UPSTREAM_BASE`, reconcile every entry in [upstream delta](../UPSTREAM_DELTA.md) and [package classification](../PACKAGE_CLASSIFICATION.md), then run preserved Kernel tests, Zhiwo type/build/surface gates, compiler and database tests, cross-guest/source/security E2E, and the evaluation set. Human review must confirm no new dependency, tool, route, prompt section, event requirement, or client chunk expands the product before merge.
-
-## Verify a release has no Coding Surface
-
-Run the fixed product gates and inspect the release identity. The surface gate scans only built browser JavaScript; startup independently verifies the manifest, SBOM, all checksums, route list, and client files.
-
-```sh
-pnpm run zhiwo:build
-pnpm run zhiwo:test
-pnpm run zhiwo:evaluate
-pnpm run zhiwo:surface
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo version
-pnpm --filter @deepseek-ai/dsh-zhiwo exec zhiwo doctor
-```
-
-Before public exposure, confirm the reverse proxy enforces HTTPS and the configured Origin, proxies only the Zhiwo public listener, preserves streaming without buffering, limits bodies and headers, never proxies metrics or owner commands, and mounts application/knowledge read-only with only state and approved logs writable.
+The composition isolates anonymous browser Session histories. It does not add account login, authorization administration, rate limits, TLS termination, or a hardened public HTTP service.

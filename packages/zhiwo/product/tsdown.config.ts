@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['lib/types/index.js', 'lib/types/invariant.js', 'lib/types/converter-worker.js'],
+  entry: ['lib/types/index.js', 'lib/types/invariant.js'],
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',

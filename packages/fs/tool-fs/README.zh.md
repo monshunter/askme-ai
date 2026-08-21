@@ -26,6 +26,8 @@ await ctx.plugin(ToolFs)                                  // this package — re
 | `readMaxLineLength` | `2000` | 每行截断前保留的字符数（后缀会说明上限）。 |
 | `readMaxBytes` | `51200` | 一次 `read` 调用所选行的字节上限；溢出时以「已达上限」footer 结束窗口。 |
 | `readStreamMinSize` | `10485760` | 大于等于该大小或大小未知的文件采用流式读取，而不是整体加载到内存。 |
+| `mutations` | `true` | 注册 `write` 和 `edit`。只需要原生文本读取器的组合可设为 `false`。 |
+| `images` | `true` | 持久附件存储可用时注册 `read_image`。纯文本组合可设为 `false`。 |
 
 ## 工具（schema 见[文件系统工具 schema Agent Note](../../../.agents/notes/implemented/feature/2026-06-17-filesystem-tool-schemas.md)）
 
@@ -67,7 +69,7 @@ await ctx.plugin(ToolFs)                                  // this package — re
 
 #### 模型看到的内容
 
-该插件注册作用域内的每个请求都会收到下方独立注册的 read、write 与 edit 指导。作用域工具限制可以隐藏 schema，而不移除这些段。
+该插件注册作用域内的每个请求只会收到配置实际注册的工具指导。设置 `mutations: false` 时，write／edit 的 Schema 和指导都会缺席；设置 `images: false` 时，`read_image` 会缺席。
 
 ##### Read 指导
 
@@ -99,7 +101,7 @@ Use the edit tool for targeted changes to existing UTF-8 text files. It replaces
 
 #### 模型看到的内容
 
-模型会看到已生成的 [`read`、`read_image`、`write` 和 `edit` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-fs)，参数使用 snake_case。`read_image` 只在持久附件存储已挂载时出现；schema 本身与路由无关，严格门禁在执行时拒绝。作用域工具限制可以为某个 agent 移除任一定义。
+模型会看到已生成的 [`read`、`read_image`、`write` 和 `edit` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-fs)，参数使用 snake_case。`read_image` 只在 `images` 启用且持久附件存储已挂载时出现；schema 本身与路由无关，严格门禁在执行时拒绝。作用域工具限制可以为某个 agent 移除任一定义。
 
 #### Token 影响
 

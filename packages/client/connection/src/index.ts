@@ -12,11 +12,15 @@ import { HostConnectionService } from './rpc-host.ts'
 import { rejectWebSocketUpgrade, WebSocketDownlinks } from './websocket-downlink.ts'
 
 export type {
+  ConnectionApiAccess,
+  ConnectionApiFetchNext,
+  ConnectionApiHeaders,
   ConnectionRpcAuthority,
   ConnectionRpcEndpointMatcher,
   ConnectionRpcHandler,
   ConnectionRpcHandlerOptions,
   HostConnectionHandle,
+  HostConnectionApiAccess,
   HostConnectionRpc,
 } from './rpc.ts'
 export { HostConnectionService } from './rpc-host.ts'
@@ -173,7 +177,10 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   ctx.effect(() => ctx.webServer.register(route), 'client-connection: /api route')
   ctx.inject(['apiProxy'], (apiCtx) => {
     assertImageBodyCapacity(apiCtx, maxRequestBodyBytes)
-    const downlinks = new WebSocketDownlinks(apiCtx.apiProxy)
+    const downlinks = new WebSocketDownlinks(
+      apiCtx.apiProxy,
+      (kind, headers, source) => connection.filterApiStream(kind, headers, source),
+    )
     const registerDownlink = (
       path: string,
       handle: WebUpgradeRoute['handler'],

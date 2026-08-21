@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/UPSTREAM_DELTA.md
-UPSTREAM_DELTA.md: 241bcb5990ae0fed08697b190da28ae02af4ed2f
-UPSTREAM_DELTA.zh.md: 84acd3acbd028672adca8280f235863cdd0f46d1
+UPSTREAM_DELTA.md: 48e7d1f759e6fe876d17daffb44438d1a087c88d
+UPSTREAM_DELTA.zh.md: 441a26fbcd299155c64623a2f36dbd418dd86077

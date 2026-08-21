@@ -332,9 +332,10 @@ export interface SessionsApi {
    * title. Reading the source uses attached state or persistence inspection
    * without acquiring an Agent. Workspace attachment follows the source
    * directly, or the nearest workspace-owning ancestor when the source is a
-   * subagent.
+   * subagent. `childSessionId` lets a trusted transport preallocate the child
+   * identity; omission keeps the Host-generated id used by ordinary clients.
    */
-  fork(request: RpcRequest<{ sessionId: SessionId; atSeq?: number }>):
+  fork(request: RpcRequest<{ sessionId: SessionId; atSeq?: number; childSessionId?: SessionId }>):
   Promise<RpcResponse<{ sessionId: SessionId }>>
 
   /**

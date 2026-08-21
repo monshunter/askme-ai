@@ -42,6 +42,7 @@ describe('ContextMeter', () => {
       contextPressure: { pressureTokens: 32_000, contextWindow: 128_000 },
       contextBreakdown: BREAKDOWN,
     })
+    expect(view.container.querySelector('[data-context-meter]')).not.toBeNull()
     const trigger = view.getByRole('button', { name: '上下文已用 25%' })
     expect(view.container.querySelector('[role="dialog"]')).toBeNull()
     fireEvent.click(trigger)

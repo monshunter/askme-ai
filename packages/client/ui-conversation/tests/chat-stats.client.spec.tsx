@@ -299,6 +299,7 @@ describe('StatsLine', () => {
       tokenUsage: USAGE,
       sessionStats: sessionStats({ turns: 10, steps: 89 }),
     })} />)
+    expect(view.container.querySelector('[data-session-stats]')).not.toBeNull()
     expect(view.container.textContent)
       .toBe('10 turns · 89 steps| Cache hit 90%| Input 100 tok · Output 5 tok')
   })

@@ -1344,6 +1344,7 @@ describe('command launcher chrome and control seats', () => {
   it('renders the command launcher; the Access chip is absent without the permissions projection; the control seats render EMPTY without entries', () => {
     const { view, slotCalls } = bench()
     expect(view.getByLabelText('命令')).toBeTruthy()
+    expect(view.container.querySelector('[data-composer-leading-controls]')).not.toBeNull()
     // Capability absent (no projection value): the chip renders nothing.
     expect(view.queryByLabelText(/^访问模式/)).toBeNull()
     // Every seat dispatched, nothing rendered.

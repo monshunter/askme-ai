@@ -1,9 +1,0 @@
-{
-  "extends": "../../tsconfig.base.client.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "rootDir": "src/client",
-    "outDir": "lib/client-types"
-  },
-  "include": ["src/client"]
-}

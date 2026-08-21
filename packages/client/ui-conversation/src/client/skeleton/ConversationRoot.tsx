@@ -13,7 +13,7 @@ import css from './ConversationRoot.module.css'
 export type ConversationRootProps = ConversationSlotProps
 
 export function ConversationRoot({
-  sessionId, useSession, useSessions, useWorkspaces, useInput, useComposerBlock,
+  sessionId, useSession, useSessions, useWorkspaces, useInput, useWorkspacePicker, useComposerBlock,
   renderSlot, renderSlotChain, selectWorkspace, t,
 }: ConversationRootProps) {
   const openState = useSession(s => s.openState)
@@ -24,6 +24,7 @@ export function ConversationRoot({
   const cwd = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.cwd)
   const summaryBlank = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.blank)
   const workspaces = useWorkspaces(s => s)
+  const workspacePickerAvailable = useWorkspacePicker(available => available)
   // A plugin this package cannot import (ui-model-selection) says this session cannot
   // send; its reason is already localized by whoever raised it.
   const composerBlock = useComposerBlock(block => block)
@@ -97,7 +98,7 @@ export function ConversationRoot({
           ? undefined
           : workspaceLabel(cwd)))
 
-  const heroWorkspaceRow = (
+  const heroWorkspaceRow = workspacePickerAvailable ? (
     <div className={css.heroWorkspaceRow}>
       <WorkspaceChip
         buttonRef={pickerAnchor}
@@ -121,7 +122,7 @@ export function ConversationRoot({
       })}
       {renderSlot('conversation.hero.agentPreset', {})}
     </div>
-  )
+  ) : null
 
   // The placeholder chip ("Choose workspace") and the Workspace-trigger input travel
   // together: no workspace picked yet (cold start, no session at all), or a
@@ -136,12 +137,12 @@ export function ConversationRoot({
   const inputBar = renderSlot('conversation.composer.bar', {
     variant: hero ? 'hero' : 'composer',
     ...(inert
-      ? {
+      ? workspacePickerAvailable ? {
         disabled: true,
         placeholder: t('placeholder.workspace'),
         workspacePickerOpen: pickerOpen,
         onRequestWorkspace: () => { setPickerOpen(true) },
-      }
+      } : { disabled: true, placeholder: t('placeholder.hero') }
       : blocked
         // `blocked`, not `disabled`: the bar refuses input either way, but a
         // block keeps the model seat live because choosing a model is how the

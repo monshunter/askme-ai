@@ -757,16 +757,6 @@
         "@deepseek-ai/.+"
       ]
     },
-    "apps/zhiwo": {
-      "entry": [
-        "tests/**/*.spec.ts",
-        "tests/**/*.snapshot.ts"
-      ],
-      "project": [
-        "src/**/*.{ts,tsx}",
-        "tests/**/*.ts"
-      ]
-    },
     "packages/client/modules": {
       "entry": [
         "tests/**/*.spec.ts"
@@ -793,6 +783,20 @@
       "project": [
         "src/**/*.ts",
         "tests/**/*.ts"
+      ]
+    },
+    "packages/zhiwo/product": {
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh-zhiwo-ui"
+      ]
+    },
+    "packages/zhiwo/ui": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.tsx"
       ]
     },
     "packages/bundle/base": {

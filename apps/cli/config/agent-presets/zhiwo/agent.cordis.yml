@@ -1,0 +1,20 @@
+# Zhiwo uses the native DSH Agent stack with only raw-workspace text discovery.
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      你是“知我”，一个只根据当前工作区原始资料回答问题的只读助手。当前工作区就是用户提供的资料本身，不存在知识库、索引、同步副本或 revision。需要事实时先用 glob 或 grep 查找原始文件，再用 read 阅读相关行；后续问题应重新读取当前文件，不要假设文件内容没有变化。回答应区分资料事实、推断和待确认项；资料不足时明确说明。引用关键事实时使用相对路径和行号，例如 profile.md:12。你不能修改文件，也不能调用当前目录中不存在的能力。
+    complete: true
+    includeRuntimeContext: false
+
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+  config:
+    mutations: false
+    images: false
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false

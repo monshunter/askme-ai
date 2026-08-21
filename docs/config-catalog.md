@@ -412,7 +412,7 @@ export interface ConnectionConfig {
 }
 ```
 
-Source: [`packages/client/connection/src/index.ts:50`](../packages/client/connection/src/index.ts)
+Source: [`packages/client/connection/src/index.ts:54`](../packages/client/connection/src/index.ts)
 
 <a id="deepseek-aidsh-client-hmr"></a>
 
@@ -2526,6 +2526,10 @@ export interface Config {
   readMaxBytes?: number
   /** Files at or above this size stream instead of loading whole into memory. */
   readStreamMinSize?: number
+  /** Register the `write` and `edit` tools in addition to `read`. */
+  mutations?: boolean
+  /** Register `read_image` while an attachment store is available. */
+  images?: boolean
 }
 ```
 
@@ -3184,6 +3188,26 @@ export interface Config {
 
 Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
+<a id="deepseek-aidsh-zhiwo-product"></a>
+
+## `@deepseek-ai/dsh-zhiwo-product`
+
+Requires: `connection` · `webServer` · `workspaceRegistry`
+
+```ts config-catalog
+/** Zhiwo host configuration. */
+export interface Config {
+  /** Directory used as every new Zhiwo session's workspace. */
+  workspaceRoot?: string
+  /** Harness home containing the private identity key; omission follows DSH_HOME. */
+  dshHome?: string
+  /** Browser visitor lifetime in days. */
+  cookieMaxAgeDays?: number
+}
+```
+
+Source: [`packages/zhiwo/product/src/index.ts:23`](../packages/zhiwo/product/src/index.ts)
+
 ## Loadable plugins with no config
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
@@ -3257,6 +3281,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
 - `@deepseek-ai/dsh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
 - `@deepseek-ai/dsh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))
+- `@deepseek-ai/dsh-zhiwo-ui` ([`packages/zhiwo/ui/src/index.ts`](../packages/zhiwo/ui/src/index.ts))
 
 ## Seam packages (not directly loadable)
 
@@ -3315,4 +3340,3 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@deepseek-ai/dsh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))
 - `@deepseek-ai/dsh-typert-protocol` ([`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts))
 - `@deepseek-ai/dsh-typert-registry` ([`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts))
-- `@deepseek-ai/dsh-zhiwo-product` ([`packages/zhiwo/product/src/index.ts`](../packages/zhiwo/product/src/index.ts))

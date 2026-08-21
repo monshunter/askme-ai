@@ -12,15 +12,15 @@ export const name = 'zhiwo-product-invariant'
 export const inject = ['invariants']
 
 /**
- * No runtime invariant: the product does not publish an independent Cordis event stream;
- * its revision validation and ownership-scoped SQLite operations enforce its mutable relations.
+ * No runtime invariant: the Workspace and Connection-policy registrations have no independent
+ * event stream or mutable companion relation; their dispatch behavior is covered by package specs.
  */
 const install: InvariantInstaller = () => {}
 
 /**
  * Register this package's invariant companion.
  * @param ctx - Cordis context carrying the invariant service.
- * @returns installed registration disposer after setup succeeds.
+ * @returns The installed registration's disposer.
  */
 export const apply = (ctx: Context): Promise<() => void> =>
   Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))

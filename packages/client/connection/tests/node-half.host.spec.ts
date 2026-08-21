@@ -10,7 +10,15 @@ import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import { RpcId, type ClientRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { WebServer, WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
-import { API_PATH, apply, HOST_EVENTS_PATH, inject, MUX_EVENTS_PATH, type HostConnectionHandle } from '../src/index.ts'
+import {
+  API_PATH,
+  apply,
+  HOST_EVENTS_PATH,
+  inject,
+  MUX_EVENTS_PATH,
+  type ConnectionApiAccess,
+  type HostConnectionHandle,
+} from '../src/index.ts'
 
 /** Structural webServer fake recording both route registries. */
 function fakeHttpServer(
@@ -335,6 +343,48 @@ describe('connection node half', () => {
     expect(loopbackOnly.state.status).toBe(403)
     await removeLoopback()
     await fiber.dispose()
+  })
+
+  it('wraps the shared API with one fiber-owned access policy and removes it on disposal', async () => {
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    ctx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+    ctx.provide('apiProxy', {} as unknown as ApiProxy)
+    const connectionFiber = ctx.plugin({ inject: [...inject], apply })
+    await connectionFiber.await()
+    const connection = ctx.get('connection') as HostConnectionHandle
+    connection.rpc.intercept(
+      '/api',
+      endpoint => endpoint === 'goals/create',
+      async () => ({ ok: true, value: { accepted: true } }),
+      { authority: 'trusted-host' },
+    )
+    const access: ConnectionApiAccess = {
+      fetch: async () => new Response('access-owned', { status: 418 }),
+      stream: (_kind, _headers, source) => source,
+    }
+    const owner = ctx.plugin({
+      inject: ['connection'],
+      apply(inner) {
+        inner.connection.apiAccess.register(access)
+      },
+    })
+    await owner.await()
+    const route = routes.find(candidate => candidate.path === API_PATH)!
+    const request: ClientRequest = {
+      type: 'client-request', rpcId: RpcId('access'), method: 'goals/create', payload: {},
+    }
+    const gated = fakeResponse()
+    await route.handler(fakePost({ host: '127.0.0.1:3080' }, '/api/goals/create', request), gated.response)
+    expect(gated.state).toMatchObject({ status: 418, body: 'access-owned' })
+    expect(() => connection.apiAccess.register(access)).toThrow(/already registered/)
+
+    await owner.dispose()
+    const native = fakeResponse()
+    await route.handler(fakePost({ host: '127.0.0.1:3080' }, '/api/goals/create', request), native.response)
+    expect(native.state.status).toBe(200)
+    expect(JSON.parse(String(native.state.body))).toMatchObject({ result: { ok: true } })
+    await connectionFiber.dispose()
   })
 
   it('applies the configured trust fence and JSON envelope checks to generic channels', async () => {

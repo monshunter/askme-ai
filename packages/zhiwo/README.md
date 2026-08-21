@@ -1,11 +1,12 @@
-# Zhiwo packages
+# AskmeAI packages
 
 English | [中文](README.zh.md)
 
-The `zhiwo/` group owns the fixed product layer over upstream harness services.
+The `zhiwo/` group owns the small AskmeAI product overlay applied to native `dsh web`; `zhiwo` remains the internal package and preset id.
 
-| Package | Role | Cordis service |
-|---|---|---|
-| [`product/`](product/README.md) | Knowledge compiler, guest identity, unified SQLite data, revision-scoped tools, Agent Loop composition, and narrow HTTP server | None; it owns the product composition |
+| Package | Role |
+|---|---|
+| [`product/`](product/README.md) | Registers the raw Workspace and ships the Web profile patch. |
+| [`ui/`](ui/README.md) | Fills native brand and greeting slots, renders Session history and the language switch, and removes unused Workspace and diagnostic chrome. |
 
-Upstream coding packages remain source inputs for baseline maintenance but are not dependencies of the Zhiwo application unless this table and [package classification](../../docs/PACKAGE_CLASSIFICATION.md) say otherwise.
+The Agent composition is the shipped [`zhiwo` preset](../../apps/cli/config/agent-presets/zhiwo/agent.cordis.yml). The native Host, API, Agent Loop, persistence, and browser packages remain the implementation; this group does not duplicate them.

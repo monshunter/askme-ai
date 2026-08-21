@@ -6,15 +6,20 @@ import {
   clientRequestSchema,
   RpcId,
   type ClientRequest,
+  type HostFrame,
+  type MuxFrame,
   type RpcError,
   type RpcErrorDetailsMap,
   type RpcId as RpcIdType,
+  type RpcRequest,
   type ServerResponse as RpcServerResponse,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { bridge, type FetchHandler } from './http-bridge.ts'
 import { isTrustedApiRequest } from './api-request-trust.ts'
 import { API_PATH } from './api-path.ts'
 import type {
+  ConnectionApiAccess,
+  ConnectionApiHeaders,
   ConnectionRpcEndpointMatcher,
   ConnectionRpcHandler,
   ConnectionRpcHandlerOptions,
@@ -42,6 +47,7 @@ declare module '@deepseek-ai/cordis' {
 /** Host Connection service whose channel registrations belong to the caller fiber. */
 export class HostConnectionService extends Service implements HostConnectionHandle {
   private readonly interceptors = new Map<string, ConnectionRpcInterceptor>()
+  private access: ConnectionApiAccess | undefined
 
   /**
    * Provide the Host half over the active HTTP server.
@@ -62,6 +68,20 @@ export class HostConnectionService extends Service implements HostConnectionHand
     }
   }
 
+  /** Deployment-owned authorization around the shared browser API. */
+  get apiAccess(): HostConnectionHandle['apiAccess'] {
+    const owner = this.ctx
+    return {
+      register: access => owner.effect(() => {
+        if (this.access !== undefined) throw new Error('connection: browser API access policy already registered')
+        this.access = access
+        return () => {
+          if (this.access === access) this.access = undefined
+        }
+      }, 'client-connection: browser API access policy'),
+    }
+  }
+
   /**
    * Compose one shared-channel Fetch handler from its interceptor and fallback.
    * @param channel - shared channel mounted by Connection.
@@ -72,7 +92,7 @@ export class HostConnectionService extends Service implements HostConnectionHand
     channel: '/api',
     fallback: FetchHandler,
   ): FetchHandler {
-    return {
+    const dispatch: FetchHandler = {
       fetch: (request) => {
         const endpoint = endpointFromPath(channel, new URL(request.url).pathname)
         const interceptor = this.interceptors.get(channel)
@@ -85,6 +105,24 @@ export class HostConnectionService extends Service implements HostConnectionHand
         return interceptor.fetchHandler.fetch(request)
       },
     }
+    return {
+      fetch: request => this.access?.fetch(request, dispatch) ?? dispatch.fetch(request),
+    }
+  }
+
+  /**
+   * Apply the active deployment policy to a native browser event stream.
+   * @param kind - Native WebSocket stream being opened.
+   * @param headers - Request headers used to resolve caller identity.
+   * @param source - Native stream before deployment filtering.
+   * @returns The policy-filtered stream, or the native stream when no policy is registered.
+   */
+  filterApiStream<F extends MuxFrame | HostFrame>(
+    kind: 'mux' | 'host',
+    headers: ConnectionApiHeaders,
+    source: AsyncIterable<RpcRequest<F>>,
+  ): AsyncIterable<RpcRequest<F>> {
+    return this.access?.stream(kind, headers, source) ?? source
   }
 
   private register(

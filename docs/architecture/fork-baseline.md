@@ -2,35 +2,28 @@
 
 English | [中文](fork-baseline.zh.md)
 
-Zhiwo 0.4 is based on the official DeepSeek Harness commit `141eb6fef83422698aef7a981029e843e8161534`. `UPSTREAM_BASE` is immutable for the release; updating an upstream branch does not update the product until the selective sync procedure completes.
+Zhiwo 0.4 is based on official DeepSeek Harness commit `141eb6fef83422698aef7a981029e843e8161534`. Its product architecture is a patch over the native Web profile.
 
-## Product topology
+## Runtime topology
 
 ```text
-Owner / CI
-  -> userdata + zhiwo.yaml
-  -> zhiwo sync
-  -> immutable Knowledge Revision
-
-Visitor browser
-  -> apps/zhiwo static client
-  -> narrow Zhiwo HTTP API
-  -> guest-owned SQLite data
-  -> fixed Zhiwo Agent
-  -> upstream Agent Loop + DeepSeek adapter + compaction
-  -> revision-scoped read / glob / grep
+dsh web
+  + packages/zhiwo/product/cordis.patch.yml
+      -> register userdata/ in the native Workspace Registry
+      -> select the shipped zhiwo Agent preset
+      -> keep native Host / API / Session / Agent Loop / browser
+      -> expose native read / glob / grep
+      -> fill native brand slots
 ```
 
-The owner plane alone sees raw data and runs PDF, Office, Git, and secret-audit work. The public process sees a read-only validated revision and writable product state. A model turn receives only the current session revision tools; it cannot select a filesystem root, model route, persona, tool set, plugin, or revision.
+The Session `cwd` is the canonical `userdata/` path. Native filesystem consumers resolve model paths against that Workspace and inspect the current files. Native DSH persistence below `DSH_HOME` owns Workspace metadata and Session history.
 
 ## Source and artifact planes
 
-Source-based TypeScript gates resolve workspace packages to `src/`. `pnpm run zhiwo:build` first builds the fixed preserved service closure, then emits the Zhiwo CLI and product-only browser assets. The delivered directory contains no generic DSH Web entry, dynamic product profile, source map, development database, secret, or `userdata/`.
-
-The release manifest binds Zhiwo version, upstream baseline, build commit/time, lockfile checksum, Agent Definition, tool catalog, public route templates, client route, compiler version, database schema, SBOM checksum, and static artifact checksums. `SHA256SUMS` covers the manifest, SBOM, surface snapshot, and browser files. Startup revalidates them before opening the public listener.
+The repository uses the ordinary host and client aggregates and the ordinary `pnpm run build`. The product package emits a host entry and its Patch; the UI package emits one client plugin. The standard CLI remains the only executable entry.
 
 ## Negative product graph
 
-Coding packages remain in the fork only for baseline maintenance. `apps/zhiwo` has one product dependency; `packages/zhiwo/product` explicitly composes the preserved Kernel packages and contains no shell, subprocess provider, writable filesystem tool, terminal, web tool, skill, plan, goal, todo, job, workflow, subagent, generic host, or generic client dependency. Tool schemas are registered inside a per-session Agent scope, while the global tool registry must remain empty.
+Zhiwo has no separate Server, API, database, Agent Loop, browser application, compiler, index, synchronized corpus, or versioned knowledge format. The Agent preset omits mutation, Shell, network, and orchestration tools. Browser reductions are patch-layer choices over the native client roster rather than a fork of the client.
 
-See [package classification](../PACKAGE_CLASSIFICATION.md) and [upstream delta](../UPSTREAM_DELTA.md) for the maintained inventory and review obligations.
+See [package classification](../PACKAGE_CLASSIFICATION.md) and [upstream delta](../UPSTREAM_DELTA.md) for the maintained inventory.

@@ -78,15 +78,15 @@ describe('experimental workspace constraints', () => {
 
 describe('Zhiwo product workspace constraints', () => {
   const product: WorkspaceManifest = {
-    dir: 'apps/zhiwo',
+    dir: 'packages/zhiwo/product',
     manifest: {
-      name: '@deepseek-ai/dsh-zhiwo',
+      name: '@deepseek-ai/dsh-zhiwo-product',
       version: '0.4.0',
       private: true,
       repository: {
         type: 'git',
         url: 'git+https://github.com/monshunter/deepseek-harness.git',
-        directory: 'apps/zhiwo',
+        directory: 'packages/zhiwo/product',
       },
     },
   }
@@ -105,9 +105,9 @@ describe('Zhiwo product workspace constraints', () => {
         publishConfig: { access: 'public' },
       },
     })).toEqual([
-      '@deepseek-ai/dsh-zhiwo: Zhiwo product package must set "private": true',
-      '@deepseek-ai/dsh-zhiwo: Zhiwo product package must omit publishConfig',
-      '@deepseek-ai/dsh-zhiwo: package.json version must match Zhiwo VERSION 0.4.0',
+      '@deepseek-ai/dsh-zhiwo-product: Zhiwo product package must set "private": true',
+      '@deepseek-ai/dsh-zhiwo-product: Zhiwo product package must omit publishConfig',
+      '@deepseek-ai/dsh-zhiwo-product: package.json version must match Zhiwo VERSION 0.4.0',
     ])
   })
 })

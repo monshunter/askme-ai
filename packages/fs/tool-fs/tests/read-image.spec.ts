@@ -95,6 +95,7 @@ interface SetupOptions {
   llm?: boolean
   storeConfig?: { maxImageBytes?: number; maxImagePixels?: number; maxImageDimension?: number; maxMessageImageBytes?: number }
   toolMode?: ToolConfig['mode']
+  toolFs?: ToolFs.Config
 }
 
 async function setup(options: SetupOptions = {}) {
@@ -117,7 +118,7 @@ async function setup(options: SetupOptions = {}) {
       { provider: 'visual', id: 'legacy-model', name: 'Legacy' },
     ], options.resolvedModels))
   }
-  await ctx.plugin(ToolFs)
+  await ctx.plugin(ToolFs, options.toolFs ?? {})
   return ctx
 }
 
@@ -494,6 +495,11 @@ describe('image admission failures', () => {
 })
 
 describe('registration surface', () => {
+  it('can omit image and mutation tools from a text-only composition', async () => {
+    const ctx = await setup({ toolFs: { images: false, mutations: false } })
+    expect(ctx.tools.schemas().map(schema => schema.name)).toEqual(['read'])
+  })
+
   it('withdraws read_image when the tool-fs fiber or the attachment store is disposed (HMR safety)', async () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)

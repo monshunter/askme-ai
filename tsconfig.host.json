@@ -88,7 +88,6 @@
     "apps/web/tests/workflow-run.e2e.ts",
     "apps/web/stress-tests/reasoning-chunks.stress.ts",
     "apps/cli/tests/**/*.ts",
-    "apps/zhiwo/tests/**/*.ts",
     "examples/*/src/**/*.ts",
     "examples/*/start.ts",
     "examples/*/tests/**/*.ts",
@@ -102,7 +101,6 @@
   // suffixes are mutually exclusive, so each aggregate excludes the other's
   // and the package test glob above needs no per-file entry.
   "exclude": [
-    "apps/zhiwo/tests/**/*.client.spec.ts",
     "packages/client/*/src/**",
     "packages/*/*/tests/**/*.client.ts",
     "packages/*/*/tests/**/*.client.tsx",
@@ -308,7 +306,6 @@
     { "path": "./packages/lsp/lsp-stdio" },
     { "path": "./packages/lsp/tool-lsp" },
     { "path": "./packages/zhiwo/product" },
-    { "path": "./apps/cli" },
-    { "path": "./apps/zhiwo" }
+    { "path": "./apps/cli" }
   ]
 }

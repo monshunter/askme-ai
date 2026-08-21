@@ -31,6 +31,10 @@ export interface Config {
   readMaxBytes?: number
   /** Files at or above this size stream instead of loading whole into memory. */
   readStreamMinSize?: number
+  /** Register the `write` and `edit` tools in addition to `read`. */
+  mutations?: boolean
+  /** Register `read_image` while an attachment store is available. */
+  images?: boolean
 }
 
 export const Config: z<Config> = z.object({
@@ -38,6 +42,8 @@ export const Config: z<Config> = z.object({
   readMaxLineLength: z.number().default(READ_MAX_LINE_LENGTH),
   readMaxBytes: z.number().default(READ_MAX_BYTES),
   readStreamMinSize: z.number().default(STREAM_MIN_SIZE),
+  mutations: z.boolean().default(true),
+  images: z.boolean().default(true),
 })
 
 /** The shape after schemastery applied the defaults. */
@@ -67,13 +73,17 @@ export function apply(ctx: Context, config: Config): void {
   // read_image is composition-conditional: without a mounted attachment store
   // the deployment cannot durably commit image bytes, so the tool never
   // registers; the execute body keeps a defensive re-check for direct callers.
-  ctx.inject(['attachments'], (imageCtx) => {
-    applyReadImageTool(imageCtx)
-  })
-  // One escalation API shared by both mutating tools: advertisement gating,
-  // per-call policy resolution, and denial-marker mapping, all keyed off whether
-  // the mounted ctx.fs confines (ctx.fs.sandboxMode).
-  const sandbox = new FsSandboxController(ctx)
-  applyWriteTool(ctx, sandbox)
-  applyEditTool(ctx, sandbox)
+  if (resolved.images) {
+    ctx.inject(['attachments'], (imageCtx) => {
+      applyReadImageTool(imageCtx)
+    })
+  }
+  if (resolved.mutations) {
+    // One escalation API shared by both mutating tools: advertisement gating,
+    // per-call policy resolution, and denial-marker mapping, all keyed off whether
+    // the mounted ctx.fs confines (ctx.fs.sandboxMode).
+    const sandbox = new FsSandboxController(ctx)
+    applyWriteTool(ctx, sandbox)
+    applyEditTool(ctx, sandbox)
+  }
 }

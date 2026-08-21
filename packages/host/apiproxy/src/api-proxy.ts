@@ -2277,7 +2277,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       },
 
       async fork(request) {
-        const { sessionId, atSeq } = request.payload
+        const { sessionId, atSeq, childSessionId } = request.payload
         let source: SessionReadState
         try {
           source = await readSessionState(sessionId)
@@ -2328,7 +2328,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             details: {},
           })
         }
-        const childId = `session-${randomUUID()}` as SessionId
+        const childId = childSessionId ?? `session-${randomUUID()}` as SessionId
         // The child inherits the parent's composition for the same reason a
         // resumed session keeps its own: the seeded history was produced under
         // those tools, and composing anything else would strand the tool calls

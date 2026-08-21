@@ -1,6 +1,48 @@
-/** Generic unary RPC contracts shared by the Host and Client Connection halves. */
+/** Generic RPC and API-access contracts shared by the Host and Client Connection halves. */
 
-import type { RpcResult } from '@deepseek-ai/dsh-host-apiproxy/api'
+import type { HostFrame, MuxFrame, RpcRequest, RpcResult } from '@deepseek-ai/dsh-host-apiproxy/api'
+
+/** Request headers retained for a Host API downlink upgrade. */
+export type ConnectionApiHeaders = Readonly<Record<string, string | undefined>>
+
+/** Fetch continuation supplied to the deployment's API access policy. */
+export interface ConnectionApiFetchNext {
+  /** Dispatch the request through the registered `/api` interceptor or native API Proxy. */
+  fetch(request: Request): Promise<Response>
+}
+
+/** Optional deployment policy around every native HTTP call and event stream. */
+export interface ConnectionApiAccess {
+  /**
+   * Authorize, rewrite, or filter one `/api` request and its response.
+   * @param request - Decoded Fetch request with the browser's headers.
+   * @param next - Native API dispatcher.
+   * @returns The complete response exposed to the browser.
+   */
+  fetch(request: Request, next: ConnectionApiFetchNext): Promise<Response>
+  /**
+   * Authorize and filter one browser event stream.
+   * @param kind - Native stream being opened.
+   * @param headers - Browser upgrade headers.
+   * @param source - Native Host stream.
+   * @returns Frames visible to this browser.
+   */
+  stream<F extends MuxFrame | HostFrame>(
+    kind: 'mux' | 'host',
+    headers: ConnectionApiHeaders,
+    source: AsyncIterable<RpcRequest<F>>,
+  ): AsyncIterable<RpcRequest<F>>
+}
+
+/** Single deployment-owned API access-policy registration. */
+export interface HostConnectionApiAccess {
+  /**
+   * Install the policy around `/api` HTTP and event-stream traffic.
+   * @param access - Deployment authorization and filtering policy.
+   * @returns asynchronous disposer removing the policy.
+   */
+  register(access: ConnectionApiAccess): () => Promise<void>
+}
 
 /** Trust fence applied before a Host RPC channel reaches its handler. */
 export type ConnectionRpcAuthority = 'trusted-host' | 'loopback'
@@ -56,6 +98,8 @@ export interface HostConnectionRpc {
 export interface HostConnectionHandle {
   /** Generic RPC channel registry. */
   readonly rpc: HostConnectionRpc
+  /** Optional deployment authorization around the native browser API. */
+  readonly apiAccess: HostConnectionApiAccess
 }
 
 /** Client caller for logical RPC channels carried by the current transport. */
