@@ -239,6 +239,11 @@ export function apply(ctx: Context): void {
         }
         sessions.open(nextId)
       },
+      resolvePlaceholder: (kind, fallback) => ctx.waterfall(
+        'conversation/placeholder',
+        kind,
+        () => fallback,
+      ),
     }),
   }, ConversationRoot)
 

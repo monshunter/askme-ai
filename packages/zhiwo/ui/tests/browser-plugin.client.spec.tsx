@@ -20,6 +20,7 @@ const HOLES = [
   'sidebar.footer.action',
   'conversation.hero.brand.mark',
   'conversation.hero.headline',
+  'conversation.input.dock',
 ] as const
 
 async function bench(clean = false) {
@@ -42,14 +43,23 @@ async function bench(clean = false) {
     list: { getSnapshot: () => sessionState, subscribe: () => () => undefined },
     open,
   })
+  ctx.reflect.provide('connection', {
+    rpc: { call: vi.fn() },
+  })
   slots.register({
     name: 'root',
-    children: Object.fromEntries(HOLES.map(name => [name, { kind: 'single', scope: 'root' }])),
+    children: Object.fromEntries(HOLES.map(name => [name, name === 'conversation.input.dock'
+      ? { kind: 'list', scope: 'session' }
+      : { kind: 'single', scope: 'root' }])),
   } as never, () => null)
   return { ctx, slots, connectWorkspace, open }
 }
 
 describe('Zhiwo browser shell', () => {
+  it('declares the native services used by the browser overlay', () => {
+    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'connection'])
+  })
+
   it('fills the native brand slots and removes them on teardown', async () => {
     const subject = await bench()
     const fiber = subject.ctx.plugin({ inject: [...inject], apply })
@@ -73,6 +83,33 @@ describe('Zhiwo browser shell', () => {
     await fiber.dispose()
   })
 
+  it('replaces only Zhiwo message placeholders and releases the interception on teardown', async () => {
+    const subject = await bench()
+    const locale = subject.ctx.get('locale') as LocaleRuntime
+    locale.setLocale('zh')
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    expect(subject.ctx.waterfall('conversation/placeholder', 'hero', () => 'generic hero'))
+      .toBe('问问我的经历、项目、能力或计划')
+    expect(subject.ctx.waterfall('conversation/placeholder', 'default', () => 'generic default'))
+      .toBe('问问我的经历、项目、能力或计划')
+
+    await fiber.dispose()
+    expect(subject.ctx.waterfall('conversation/placeholder', 'hero', () => 'generic hero')).toBe('generic hero')
+  })
+
+  it('replaces the browser product title without retaining DSH wording', async () => {
+    const subject = await bench()
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    expect(subject.ctx.waterfall('ui/product-title', () => 'DSH Local Build')).toBe('知我AI')
+
+    await fiber.dispose()
+    expect(subject.ctx.waterfall('ui/product-title', () => 'DSH Local Build')).toBe('DSH Local Build')
+  })
+
   it('renders the requested mark size and localized product names', () => {
     const mark = render(<ZhiwoBrandMark size={34} className="hero-mark" />)
     expect(mark.container.querySelector('svg')?.getAttribute('width')).toBe('34')
@@ -88,10 +125,10 @@ describe('Zhiwo browser shell', () => {
   it('renders the localized greeting without the generic preview headline', () => {
     const view = render(<ZhiwoGreeting {...{
       className: 'headline',
-      t: () => '你好，我是知我AI',
+      t: () => '你好，欢迎来了解我',
     } as unknown as ZhiwoGreetingProps} />)
 
-    expect(view.getByText('你好，我是知我AI').getAttribute('class')).toBe('headline')
+    expect(view.getByText('你好，欢迎来了解我').getAttribute('class')).toBe('headline')
     expect(view.queryByText('探索未至之境')).toBeNull()
     expect(view.queryByText('预览版')).toBeNull()
   })

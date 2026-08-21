@@ -58,4 +58,18 @@ describe('buildRenderApp', () => {
     await b.runtime.flush()
     expect(document.title).toBe('Product')
   })
+
+  it('lets a product profile replace the browser title', async () => {
+    vi.stubEnv('DSH_CLIENT_TITLE', 'Generic')
+    const b = await bench()
+    const off = b.runtime.ctx.on('ui/product-title', (next) => {
+      next()
+      return '知我AI'
+    })
+    render(<>{b.renderApp()}</>)
+    expect(document.title).toBe('知我AI')
+    await b.runtime.sessions.add({ id: 's1', summary: { title: '项目经历' } })
+    expect(document.title).toBe('项目经历 — 知我AI')
+    off()
+  })
 })

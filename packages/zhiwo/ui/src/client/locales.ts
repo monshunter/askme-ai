@@ -3,13 +3,23 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
   'brand.name': '知我AI',
-  'hero.greeting': '你好，我是知我AI',
+  'hero.greeting': '你好，欢迎来了解我',
   'history.aria': '历史会话',
   'history.heading': '历史会话',
   'session.new': '新会话',
   'session.running': '进行中',
   'language.label': '语言',
   'language.switch': '切换为{language}',
+  'questions.welcome.aria': '推荐问题',
+  'questions.welcome.heading': '可以这样了解我',
+  'questions.followup.aria': '后续推荐问题',
+  'questions.followup.heading': '还可以继续问',
+  'questions.refresh': '换一组',
+  'questions.refreshing': '正在更新',
+  'questions.loading': '正在准备可提问的问题…',
+  'questions.error': '问题更新失败，已保留上一组。',
+  'questions.retry': '重试',
+  'placeholder.message': '问问我的经历、项目、能力或计划',
 } satisfies Record<string, string>
 
 /** The Zhiwo namespace key union. */
@@ -25,11 +35,21 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** English dictionary, checked complete against the Chinese key set. */
 export const en = {
   'brand.name': 'AskmeAI',
-  'hero.greeting': "Hello, I'm AskmeAI",
+  'hero.greeting': 'Hi, get to know me here',
   'history.aria': 'Session history',
   'history.heading': 'History',
   'session.new': 'New Session',
   'session.running': 'Running',
   'language.label': 'Language',
   'language.switch': 'Switch to {language}',
+  'questions.welcome.aria': 'Suggested questions',
+  'questions.welcome.heading': 'Ways to get to know me',
+  'questions.followup.aria': 'Suggested follow-up questions',
+  'questions.followup.heading': 'Keep asking',
+  'questions.refresh': 'Refresh',
+  'questions.refreshing': 'Refreshing',
+  'questions.loading': 'Preparing questions you can ask…',
+  'questions.error': 'Question update failed. The previous set is still available.',
+  'questions.retry': 'Retry',
+  'placeholder.message': 'Ask about my experience, projects, strengths, or plans',
 } satisfies Record<ZhiwoKey, string>

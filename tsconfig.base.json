@@ -41,6 +41,7 @@
       "@deepseek-ai/dsh-invariants": ["./packages/runtime-diagnostics/invariants/src/index.ts"],
       "@deepseek-ai/dsh-zhiwo-product": ["./packages/zhiwo/product/src/index.ts"],
       "@deepseek-ai/dsh-zhiwo-product/invariant": ["./packages/zhiwo/product/src/invariant.ts"],
+      "@deepseek-ai/dsh-zhiwo-product/types": ["./packages/zhiwo/product/src/types.ts"],
       "@deepseek-ai/dsh-zhiwo-ui": ["./packages/zhiwo/ui/src/index.ts"],
       "@deepseek-ai/dsh-zhiwo-ui/client": ["./packages/zhiwo/ui/src/client/index.ts"],
       "@deepseek-ai/dsh-zhiwo-ui/invariant": ["./packages/zhiwo/ui/src/invariant.ts"],

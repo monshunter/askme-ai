@@ -253,6 +253,7 @@ function mount(
     renderSlot,
     renderSlotChain,
     selectWorkspace: retargetWorkspace,
+    resolvePlaceholder: (_kind, fallback) => fallback,
     t,
   }
   const view = render(<ConversationRoot {...props} />)

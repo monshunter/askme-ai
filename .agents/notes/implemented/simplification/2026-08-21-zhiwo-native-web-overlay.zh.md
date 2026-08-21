@@ -16,9 +16,9 @@ Status: implemented
 
 随仓库交付的 `zhiwo` Agent Preset 包含完整中文 Persona，并挂载维护中的 Filesystem Reader 与 Search Consumer。`@deepseek-ai/dsh-tool-fs` 接受通用的 `mutations` 与 `images` 配置字段；两者都设为 `false` 时只注册 `read`，两者的默认值保持其他 Profile 不变。因此该 Preset 只暴露基于 Session `cwd` 的 `read`、`glob` 与 `grep`。
 
-Product Patch 选择该 Preset、固定只读 Sandbox Policy、从浏览器 Roster 中删除不用的配置与编码 Occupant、禁用通用 Workspace UI 与 Session Log 下载插件，并插入 `packages/zhiwo/ui`。Host 保留原生 Directory Picker 依赖，但知我AI访问策略不暴露其方法。UI 包填充原生 Brand 与 Hero Headline Slot，把当前访问者的原生 Session Store 投影成扁平历史列表，使用原生 Workspace 与 Session Runtime 把干净浏览器连接到唯一 Workspace，从界面移除常驻命令／访问模式控件组、上下文用量圆环和 Session 统计行，并提供在中英文之间切换原生 Locale 的侧边栏操作。中文品牌与问候语为“知我AI”和“你好，我是知我AI”，英文为“AskmeAI”和“Hello, I'm AskmeAI”；没有占用该 Slot 的其他 Profile 仍使用原生预览标题与徽标。模型选择与发送继续使用原生 Composer。该包不拥有 Transport、Routing、持久化 State 或 Conversation 实现。
+Product Patch 选择该 Preset、固定只读 Sandbox Policy、从浏览器 Roster 中删除不用的配置与编码 Occupant、禁用通用 Workspace UI 与 Session Log 下载插件，并插入 `packages/zhiwo/ui`。Host 保留原生 Directory Picker 依赖，但知我AI访问策略不暴露其方法。UI 包填充原生 Brand 与 Hero Headline Slot，把当前访问者的原生 Session Store 投影成扁平历史列表，使用原生 Workspace 与 Session Runtime 把干净浏览器连接到唯一 Workspace，从界面移除常驻命令／访问模式控件组、上下文用量圆环和 Session 统计行，并提供在中英文之间切换原生 Locale 的侧边栏操作。两种语言都保留“知我AI”产品名。空白会话问候语邀请访客了解资料所有者，不会把 Agent 呈现为独立主体；没有占用该 Slot 的其他 Profile 仍使用原生预览标题与徽标。模型选择与发送继续使用原生 Composer。该包不拥有 Transport、Routing、持久化 State 或 Conversation 实现。
 
-原始 Workspace 是事实来源。Tool Call 直接检查当前文件。知我不定义 Compiler、Index、同步 Lifecycle、生成语料、Source Catalog、版本化知识格式、自建数据库、HTTP Server 或并行浏览器入口。
+原始 Workspace 是事实来源。Tool Call 直接检查当前文件。知我不定义 Compiler、从正文派生的 Index、同步 Lifecycle、生成语料、Source Catalog、版本化知识格式、自建数据库、HTTP Server 或并行浏览器入口。知我只维护一份根据元数据派生的访客提示问题目录及其缓存；其有界输入与失效规则由[个性化提示问题决策](../feature/2026-08-21-zhiwo-personalized-questions.md)定义。
 
 `packages/zhiwo/product` 在原生 Connection Transport 外安装一条访问策略。浏览器会在并发打开 API 与 WebSocket 连接前建立随机 Subject；Host 随后把它升级成签名 HttpOnly Cookie。Host 私有 HMAC 派生不透明的 Owner Prefix，并把它嵌入每个原生 Session ID。新 Session 被强制放到已注册 Workspace，其他访问者的 Session ID 会在原生分发前被拒绝，列表与 Workspace 投影会被过滤，两条原生事件流也会丢弃其他访问者的 Session Frame。该策略只在 `DSH_HOME` 下保存一把私有签名密钥，不保存 Visitor、Message 或 Session 记录。
 

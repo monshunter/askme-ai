@@ -26,6 +26,14 @@
         description: Read the workspace without mutation or approval prompts.
     defaultPreset: read-only
 
+# An explicit CLI flag remains the one-invocation override. Zhiwo's deployment
+# default is stable and its environment override never asks the OS for a
+# random port; the Web Server rejects invalid or occupied values at load/bind.
+- id: webserver
+  config:
+    host: !!js ctx.webStartup.host ?? '127.0.0.1'
+    port: !!js ctx.webStartup.port ?? Number(process.env.ZHIWO_LISTEN_PORT ?? '18000')
+
 - id: agent-presets
   config:
     default: zhiwo

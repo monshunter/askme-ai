@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-This package is the thin AskmeAI overlay for the native `dsh web` profile; `zhiwo` remains its internal package and preset id. It does not own an Agent Loop, API server, database, browser application, knowledge compiler, source catalog, or revision format.
+This package is the thin AskmeAI overlay for the native `dsh web` profile. AskmeAI is the material owner's visitor-facing personal Agent and represents that owner when answering; `zhiwo` remains its internal package and preset id. It does not own an Agent Loop, API server, database, browser application, knowledge compiler, generated knowledge corpus, or revision format. It does own the bounded, derived question catalog described below.
 
 The host plugin resolves `ZHIWO_WORKSPACE_ROOT` (default `userdata`) and passes it to the native DSH Workspace Registry, which owns canonicalization and directory validation. The bundle patch selects the shipped `zhiwo` Agent preset, read-only sandbox mode, the AskmeAI brand plugin, and a reduced browser roster. The generic Workspace UI and Session-log download plugin are not loaded; the AskmeAI client projects only visitor-owned native Sessions, automatically connects a clean browser to the sole Workspace, suppresses unused composer diagnostics, replaces the generic preview headline with the localized AskmeAI greeting, and exposes a direct Chinese/English switch in the sidebar. Launching still goes through the ordinary command:
 
@@ -11,9 +11,15 @@ DSH_HOME=.artifacts/zhiwo pnpm dsh web \
   --patch packages/zhiwo/product/cordis.patch.yml
 ```
 
-The `zhiwo` preset mounts the maintained filesystem consumer with `mutations: false` plus the maintained filesystem-search consumer. The model therefore sees exactly `read`, `glob`, and `grep`, and those tools operate on the Session `cwd` exactly as they do in native DSH. Files are read live from `userdata/`; editing a file changes what a later turn can retrieve without a sync step.
+The patched Web server binds `127.0.0.1:18000` by default. An explicit `--port` wins for one invocation; otherwise `ZHIWO_LISTEN_PORT` overrides `18000`. Invalid or occupied values fail startup instead of selecting a random port.
+
+The `zhiwo` preset tells the model that it is the material owner's personal Agent for visitors. First-person answers refer to the owner, not the Agent or visitor, and the model must not treat a visitor's information or machine-environment data as the owner's. Citations use relative paths; absolute paths are never output. The preset mounts the maintained filesystem consumer with `mutations: false` plus the maintained filesystem-search consumer. The model therefore sees exactly `read`, `glob`, and `grep`, and those tools operate on the Session `cwd` exactly as they do in native DSH. Files are read live from `userdata/`; editing a file changes what a later turn can retrieve without a sync step.
 
 The host plugin also installs one access policy around the native Connection transport. A stateless signed cookie derives an opaque owner prefix for native Session ids. The policy forces new Sessions onto the registered Workspace, rejects foreign Session ids before dispatch, filters lists and Workspace projections, and filters both native WebSocket streams. It persists one private signing key below `DSH_HOME` but owns no visitor, message, or Session database. Separate browser profiles therefore share the read-only Workspace while their native conversation histories remain isolated.
+
+Startup also schedules one non-blocking inventory of eligible immediate child directories and regular documents below the Workspace. It fingerprints names, kinds, sizes, and modification times without reading document bodies. A matching versioned private cache below `DSH_HOME` publishes its 100 bilingual semantic question pairs without rebuilding or rewriting; a changed directory or document rebuilds and atomically replaces the cache. With projects the catalog contains 50 global and 50 project pairs, otherwise 100 global pairs. The internal `zhiwo/questions` Remote travels through the existing Typert Gateway and visitor Session guard. Welcome responses contain four rotating questions; a completed Turn response contains exactly two questions derived from that Turn and two from the initialized global pool. No additional model call is made for suggestions.
+
+The Host rewrites the initial document title and favicon before serving the Zhiwo page, and replaces the generic install manifest and icon asset with “知我AI” metadata. The Client keeps blank and titled tabs under the same “知我AI” product title and rounded “知” mark, so the generic DSH build name and fish icon never remain on browser or install surfaces.
 
 ## Model Experience
 
@@ -28,3 +34,4 @@ The package itself adds no request tokens; cache behavior follows the stable per
 - AskmeAI inherits native DSH text-file behavior; it does not convert PDF, Office, archive, image, or other binary formats into a second text corpus.
 - The overlay isolates anonymous browser Session histories. It does not provide account login, authorization administration, rate limits, TLS termination, or other public-hosting controls.
 - Workspace history is stored by native DSH under `DSH_HOME`. Use a dedicated AskmeAI home to avoid mixing workspaces and sessions from another profile.
+- Project suggestions use immediate directory names, not document content. A terse directory name can therefore produce a terse project label until the source directory is renamed.

@@ -33,4 +33,13 @@ describe('DocumentTitle', () => {
     mounted.unmount()
     expect(document.title).toBe('DSH Local Build')
   })
+
+  it('uses an explicit product profile title for blank and titled Sessions', () => {
+    const mounted = render(<DocumentTitle productTitle="知我AI" />)
+    expect(document.title).toBe('知我AI')
+    mounted.rerender(<DocumentTitle productTitle="知我AI" title="项目经历" />)
+    expect(document.title).toBe('项目经历 — 知我AI')
+    mounted.unmount()
+    expect(document.title).toBe('知我AI')
+  })
 })

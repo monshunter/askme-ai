@@ -3194,7 +3194,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-zhiwo-product`
 
-需要：`connection` · `webServer` · `workspaceRegistry`
+需要：`connection` · `sessions` · `webServer` · `workspaceRegistry`
 
 ```ts config-catalog
 /** Zhiwo host configuration. */
@@ -3208,7 +3208,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/zhiwo/product/src/index.ts:23`](../packages/zhiwo/product/src/index.ts)
+来源：[`packages/zhiwo/product/src/index.ts:26`](../packages/zhiwo/product/src/index.ts)
 
 ## 无配置的可加载插件
 

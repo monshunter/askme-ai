@@ -353,6 +353,15 @@ export interface ChatFileMentions {
 }
 
 declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Let a product profile replace one generic conversation message placeholder.
+     * @param kind - Composer phase whose copy is being resolved.
+     * @param next - Resolve the next profile contribution or generic dictionary fallback.
+     * @mode waterfall
+     */
+    'conversation/placeholder'(kind: 'hero' | 'default', next: () => string): string
+  }
   interface Context {
     /** Prose file-mention provider (ui-deliverables); reach via ctx.get — optional. */
     chatFileMentions: ChatFileMentions
@@ -462,6 +471,8 @@ export interface ConversationInjected {
    * When a blank session is already current, carry its draft to the target.
    */
   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
+  /** Resolve profile-specific message copy while retaining the generic dictionary fallback. */
+  resolvePlaceholder: (kind: 'hero' | 'default', fallback: string) => string
   /**
    * Framework-bound sources. `composerBlock` is this session's block when a
    * plugin raised one; the reason is the blocker's own localized copy, which

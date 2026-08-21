@@ -2,7 +2,7 @@
 
 ## 目标
 
-知我AI 是在原生 DeepSeek Harness Web 上更换品牌外壳并限制模型能力的只读资料问答模式，英文名为 AskmeAI。实现沿用原生 `dsh web` 的 Host、Agent Loop、Session、API、持久化与浏览器交互，不维护第二套产品运行时。
+知我AI 是资料所有者面向访客的个人 Agent，英文名为 AskmeAI。它在原生 DeepSeek Harness Web 上提供只读资料问答：访客通过它了解资料所有者，它代表资料所有者作答。实现沿用原生 `dsh web` 的 Host、Agent Loop、Session、API、持久化与浏览器交互，不维护第二套产品运行时。
 
 ## 启动与工作区
 
@@ -19,7 +19,7 @@ DSH_HOME=.artifacts/zhiwo ZHIWO_WORKSPACE_ROOT=userdata \
 
 ## Agent 能力
 
-知我AI 使用随 CLI 交付的 `zhiwo` Agent Preset。完整 Persona 要求模型先用 `glob` 或 `grep` 定位原始文本，再用 `read` 阅读相关行，并以相对 `path:line` 标注关键事实；证据不足时明确说明，推断不得伪装成资料事实。
+知我AI 使用随 CLI 交付的 `zhiwo` Agent Preset。完整 Persona 明确区分资料所有者、访客与 Agent：回答中的“我”始终代表资料所有者，不得把访客的信息误写为资料所有者的信息。模型先用 `glob` 或 `grep` 定位原始文本，再用 `read` 阅读相关行，并以相对 `path:line` 标注关键事实；证据不足时明确说明，推断不得伪装成资料事实。
 
 模型工具目录只有：
 
@@ -31,7 +31,7 @@ DSH_HOME=.artifacts/zhiwo ZHIWO_WORKSPACE_ROOT=userdata \
 
 ## 浏览器
 
-知我AI 保留原生 DSH 的对话、流式输出、推理展示、工具卡片、历史、Session、模型选择与发送交互。知我AI UI 插件填充原生品牌与空白会话标题 Slot，并把当前访问者的原生 Session Store 投影成会话列表；它不维护会话状态。中文名称为“知我AI”，英文名称为“AskmeAI”；中文问候语为“你好，我是知我AI”，英文问候语为“Hello, I'm AskmeAI”，不显示原生预览标题与预览标记。Profile Patch 不加载通用 Workspace UI 与 Session Log 下载插件，并隐藏设置、插件管理、编码功能控件、命令／访问模式控件组、上下文用量圆环和 Session 统计行；侧边栏底部保留中英文切换。
+知我AI 保留原生 DSH 的对话、流式输出、推理展示、工具卡片、历史、Session、模型选择与发送交互。知我AI UI 插件填充原生品牌与空白会话标题 Slot，并把当前访问者的原生 Session Store 投影成会话列表；它不维护会话状态。中文名称为“知我AI”，英文名称为“AskmeAI”；中文问候语为“你好，欢迎来了解我”，英文问候语为“Hi, get to know me here”，其中“我”代表资料所有者。消息输入框分别显示“问问我的经历、项目、能力或计划”与“Ask about my experience, projects, strengths, or plans”。界面不显示原生预览标题与预览标记。Profile Patch 不加载通用 Workspace UI 与 Session Log 下载插件，并隐藏设置、插件管理、编码功能控件、命令／访问模式控件组、上下文用量圆环和 Session 统计行；侧边栏底部保留中英文切换。
 
 Workspace 是 Host 内部实现细节。浏览器不显示 Workspace 标题、`userdata`、分组、未分组、搜索、新建、设置或选择器。干净浏览器在唯一 Workspace Baseline 就绪后通过原生 Workspace／Session Runtime 自动创建或复用空 Session，用户无需感知 Workspace。
 
@@ -55,7 +55,8 @@ Workspace 是 Host 内部实现细节。浏览器不显示 Workspace 标题、`u
 - 浏览器无需工作区选择即可进入知我AI Session。
 - 浏览器中不存在 Workspace 名称、分组、搜索、新建、设置或选择入口，只显示当前访问者的会话。
 - 浏览器中不存在 Session Log 下载、命令／访问模式控件、上下文用量圆环或 Session 统计行，模型选择与发送仍可用。
-- 中文界面显示“知我AI”与“你好，我是知我AI”，英文界面显示“AskmeAI”与“Hello, I'm AskmeAI”，且不存在原生预览标记。
+- 中文界面显示“知我AI”与“你好，欢迎来了解我”，英文界面显示“AskmeAI”与“Hi, get to know me here”；输入框使用资料所有者第一人称，且不存在原生预览标记。
+- Agent 面向访客并代表资料所有者回答；回答中的“我”指资料所有者，不能把访客的信息混入资料所有者身份。
 - 侧边栏提供可双向切换整个界面与会话历史的中英文入口。
 - 两个独立浏览器 Profile 只能列出、读取、操作并接收各自的 Session 与事件，但都能读取同一个 `userdata/` Workspace。
 - 真实问答通过 `glob`、`grep`、`read` 读取 `userdata/` 当前原始文本。

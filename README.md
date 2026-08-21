@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-AskmeAI is a thin configuration and branding layer over the native DeepSeek Harness Web application. It starts through the ordinary `dsh web` command, uses the upstream Host, Agent Loop, sessions, API, and browser client, and opens `userdata/` as its default Workspace.
+AskmeAI is a personal Agent through which visitors get to know the material owner. It represents that owner when answering from their material. The product is a thin configuration and branding layer over the native DeepSeek Harness Web application: it starts through the ordinary `dsh web` command, uses the upstream Host, Agent Loop, sessions, API, and browser client, and opens `userdata/` as its default Workspace.
 
 There is no AskmeAI revision, knowledge compiler, synchronization command, generated corpus, custom API server, or product database. The files under `userdata/` are the source of truth and later turns read their current contents.
 
@@ -31,7 +31,7 @@ Open the URL printed by `dsh web`. The shortcut `pnpm run zhiwo:demo` runs the s
 
 The startup overlay registers the configured directory through the native Workspace Registry, and the native browser automatically connects its initial Session to that Workspace. AskmeAI exposes only conversations in the browser: Workspace names, groups, search, creation, settings, and pickers are absent. The shipped `zhiwo` Agent preset exposes only the maintained `read`, `glob`, and `grep` tools. Filesystem writes, Shell, Web search, Skills, plans, goals, workflows, jobs, and Subagents are absent from the model tool catalog.
 
-The browser retains native conversation, streaming, history, model-selection, and Session behavior. A small client plugin displays `AskmeAI` in English and `知我AI` in Chinese, replaces the generic preview headline with a localized greeting, and provides the sidebar language switch. Workspace controls, Session-log download, the command/access-mode cluster, the context meter, and the statistics strip are absent from the AskmeAI surface.
+The browser retains native conversation, streaming, history, model-selection, and Session behavior. A small client plugin displays `AskmeAI` in English and `知我AI` in Chinese, speaks about the material owner in the first person, replaces the generic preview headline with a localized invitation to get to know that owner, and provides the sidebar language switch. Workspace controls, Session-log download, the command/access-mode cluster, the context meter, and the statistics strip are absent from the AskmeAI surface.
 
 Each browser profile receives an anonymous signed identity. AskmeAI uses that identity to scope native Session ids, Session lists, direct Session operations, Workspace projections, and both event streams. A browser cannot read, change, or receive another browser's conversations. All visitors deliberately read the same read-only `userdata/` Workspace; the isolation applies to conversations, not to the source material.
 

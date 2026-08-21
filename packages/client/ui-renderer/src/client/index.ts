@@ -31,6 +31,14 @@ export interface UiRendererService {
 }
 
 declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Let one product profile replace the build-selected browser product title.
+     * @param next - Resolve the next profile contribution or generic build title.
+     * @mode waterfall
+     */
+    'ui/product-title'(next: () => string): string
+  }
   interface Context {
     /** Mount face provided after the UI renderer activates. */
     uiRenderer: UiRendererService

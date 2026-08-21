@@ -119,6 +119,24 @@ describe('Zhiwo native API ownership', () => {
     expect(native).not.toHaveBeenCalled()
   })
 
+  it('admits the private question endpoint only for a visitor-owned Session', async () => {
+    const { policy, identities } = access()
+    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}questions`
+    const native = vi.fn(() => Promise.resolve(response({ items: [] })))
+
+    const accepted = await policy.fetch(call('zhiwo/questions', { args: { request: {
+      kind: 'welcome', locale: 'zh', sessionId: owned, excludeIds: [],
+    } } }), { fetch: native })
+    expect(accepted.status).toBe(200)
+    expect(native).toHaveBeenCalledTimes(1)
+
+    const denied = await policy.fetch(call('zhiwo/questions', { args: { request: {
+      kind: 'welcome', locale: 'zh', sessionId: owned, excludeIds: [],
+    } } }, SUBJECT_B), { fetch: native })
+    expect(denied.status).toBe(404)
+    expect(native).toHaveBeenCalledTimes(1)
+  })
+
   it('preallocates an owned fork child without changing the native fork lifecycle', async () => {
     const { policy, identities } = access()
     const prefix = identities.resolve(cookie(SUBJECT_A)).sessionPrefix

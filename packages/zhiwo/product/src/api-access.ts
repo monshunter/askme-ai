@@ -15,6 +15,7 @@ import type {
   ConnectionApiHeaders,
 } from '@deepseek-ai/dsh-client-connection'
 import type { VisitorIdentities, VisitorIdentity } from './identity.ts'
+import { ZHIWO_QUESTIONS_ENDPOINT } from './questions.ts'
 
 const ALLOWED_METHODS = new Set([
   'host.describe',
@@ -34,6 +35,7 @@ const ALLOWED_METHODS = new Set([
   'workspace.archiveSession',
   'workspace.insertSessionBefore',
   'workspace.list',
+  ZHIWO_QUESTIONS_ENDPOINT,
 ])
 
 const SESSION_ID_FIELDS = ['sessionId', 'parentSessionId', 'childSessionId', 'beforeSessionId'] as const
@@ -58,6 +60,11 @@ function foreignSessionId(identity: VisitorIdentity, payload: unknown): string |
     if (typeof sessionId === 'string' && !owns(identity, sessionId)) return sessionId
   }
   return undefined
+}
+
+function methodArguments(method: string, payload: unknown): unknown {
+  if (method !== ZHIWO_QUESTIONS_ENDPOINT) return payload
+  return record(record(payload)?.['args'])?.['request']
 }
 
 function workspaceView(value: unknown, workspaceId: string, identity: VisitorIdentity): WorkspaceView | undefined {
@@ -259,7 +266,7 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
       return withIdentityCookie(await next.fetch(request), identity)
     }
     const payload = record(parsed.data.payload)
-    if (foreignSessionId(identity, payload) !== undefined) {
+    if (foreignSessionId(identity, methodArguments(method, payload)) !== undefined) {
       return withIdentityCookie(new Response('not found', { status: 404 }), identity)
     }
 
