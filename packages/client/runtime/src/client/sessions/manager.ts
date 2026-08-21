@@ -603,6 +603,21 @@ export class SessionManager {
   }
 
   /**
+   * Permanently delete one top-level Session through the Host.
+   * @param sessionId - session id to delete.
+   * @returns the Host result after local list state reflects a successful deletion.
+   */
+  async delete(sessionId: SessionId): Promise<RpcResult<{ deleted: true }>> {
+    try {
+      const { result } = await this.api.sessions.delete({ sessionId })
+      if (result.ok) this.handleSessionRemoved(sessionId)
+      return result
+    } catch (error) {
+      return transportError(error)
+    }
+  }
+
+  /**
    * Insert-or-enrich a locally synthesized summary: a new id prepends; an
    * existing entry only gains fields it lacks (the session-added frame and the
    * create() echo race — whichever lands second must fill the placeholder's
@@ -814,50 +829,7 @@ export class SessionManager {
         return
       }
       case 'host/session-removed': {
-        const summary = this.summaries.find(candidate => candidate.sessionId === frame.sessionId)
-        const durableSubagent = summary?.origin === 'subagent' || this.addresses.has(frame.sessionId)
-        this.recordMutation(durableSubagent
-          ? { kind: 'status', sessionId: frame.sessionId, running: false }
-          : { kind: 'remove', sessionId: frame.sessionId })
-        this.updateCatalogActivity(frame.sessionId, false)
-        if (durableSubagent) {
-          // An Activation detaching is not durable child deletion:
-          // keep its lineage and conversation while returning it to idle.
-          this.sessions.get(frame.sessionId)?.handleRunning(false)
-        } else {
-          this.sessions.get(frame.sessionId)?.handleRemoved()
-        }
-        this.pendingBuffers.delete(frame.sessionId) // a removed session's buffered frames must not replay on a future instantiation
-        this.pendingInteractions.delete(frame.sessionId) // a removed session cannot wait on anyone
-        // Owner disposal already dropped these registry-side, but that lands on
-        // the mux stream while this frame rides the host stream, so the two have
-        // no relative order. Clearing here makes a detached Activation's rows
-        // disappear whichever arrives first.
-        this.jobsBySession.delete(frame.sessionId)
-        if (!durableSubagent) this.projectionStores.delete(frame.sessionId)
-        // A pull already in flight was requested before this removal and can
-        // carry the pre-removal parentAvailable:true, which would resurrect
-        // the writable editor this invalidation just closed. Replay false over
-        // that response and queue one trailing refresh so the post-removal
-        // host truth converges.
-        const inflightCatalog = this.catalogInflight.get(frame.sessionId)
-        if (inflightCatalog !== undefined) {
-          inflightCatalog.parentAvailableOverride = false
-          this.catalogStale.add(frame.sessionId)
-        }
-        // The removed session can no longer be the delivery owner of its
-        // catalog: invalidate availability immediately. Removal schedules no
-        // catalog refresh, and without this an addressed child keeps a
-        // writable editor against a dead continuation owner until an
-        // unrelated refresh (or forever, for a closed menu).
-        const ownedCatalog = this.catalogs.get(frame.sessionId)
-        if (ownedCatalog !== undefined && ownedCatalog.parentAvailable) {
-          this.catalogs.set(frame.sessionId, { ...ownedCatalog, parentAvailable: false })
-        }
-        for (const [childId, address] of this.addresses) {
-          if (address.parentSessionId !== frame.sessionId) continue
-          this.sessions.get(childId)?.handleSubagentParentAvailable(false)
-        }
+        this.handleSessionRemoved(frame.sessionId)
         return
       }
       case 'host/session-status': {
@@ -872,6 +844,44 @@ export class SessionManager {
       }
       default:
         return // stream/error ignored; unknown frames ignored (documented default)
+    }
+  }
+
+  /** Apply one Host-confirmed removal; repeated stream/unary observations are idempotent. */
+  private handleSessionRemoved(sessionId: SessionId): void {
+    const summary = this.summaries.find(candidate => candidate.sessionId === sessionId)
+    const durableSubagent = summary?.origin === 'subagent' || this.addresses.has(sessionId)
+    this.recordMutation(durableSubagent
+      ? { kind: 'status', sessionId, running: false }
+      : { kind: 'remove', sessionId })
+    this.updateCatalogActivity(sessionId, false)
+    if (durableSubagent) {
+      // An Activation detaching is not durable child deletion:
+      // keep its lineage and conversation while returning it to idle.
+      this.sessions.get(sessionId)?.handleRunning(false)
+    } else {
+      this.sessions.get(sessionId)?.handleRemoved()
+    }
+    this.pendingBuffers.delete(sessionId)
+    this.pendingInteractions.delete(sessionId)
+    // Owner disposal already dropped these registry-side, but that lands on
+    // the mux stream while this frame rides the host stream, so the two have
+    // no relative order. Clearing here makes a detached Activation's rows
+    // disappear whichever arrives first.
+    this.jobsBySession.delete(sessionId)
+    if (!durableSubagent) this.projectionStores.delete(sessionId)
+    const inflightCatalog = this.catalogInflight.get(sessionId)
+    if (inflightCatalog !== undefined) {
+      inflightCatalog.parentAvailableOverride = false
+      this.catalogStale.add(sessionId)
+    }
+    const ownedCatalog = this.catalogs.get(sessionId)
+    if (ownedCatalog !== undefined && ownedCatalog.parentAvailable) {
+      this.catalogs.set(sessionId, { ...ownedCatalog, parentAvailable: false })
+    }
+    for (const [childId, address] of this.addresses) {
+      if (address.parentSessionId !== sessionId) continue
+      this.sessions.get(childId)?.handleSubagentParentAvailable(false)
     }
   }
 

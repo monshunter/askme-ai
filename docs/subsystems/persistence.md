@@ -296,6 +296,15 @@ abstract create(meta: SessionHeader): Promise<void>
 abstract append(id: SessionId, events: readonly SessionEvent[]): Promise<void>
 
 /**
+ * Permanently remove one detached session and its backend-owned event log.
+ * The session must not be live; implementations serialize deletion behind
+ * pending writes and invalidate unpublished preparations before resolving.
+ * @param id - the persisted session to delete.
+ * @returns whether a materialized record existed and was removed.
+ */
+abstract delete(id: SessionId): Promise<boolean>
+
+/**
  * Prepare the exact unpublished Session used by resume. Implementations may
  * reuse object graphs retained by an earlier {@link inspect} after confirming
  * their durable revision is still current; disposal releases an unpublished

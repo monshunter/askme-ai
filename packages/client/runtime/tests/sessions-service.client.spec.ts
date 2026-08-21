@@ -9,7 +9,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
-import { SessionCreateError, SessionRuntime, scopeOf } from '../src/client/sessions/service.ts'
+import { SessionCreateError, SessionDeleteError, SessionRuntime, scopeOf } from '../src/client/sessions/service.ts'
 import { FakeApiClient, deferred, err, fakeRemote, ok } from './fake-api.client.ts'
 
 const sid = (s: string): SessionId => s as SessionId
@@ -517,6 +517,50 @@ describe('create', () => {
       rpcError: { code: 'workspace-attach-failed' },
     })
     expect(b.svc.list.getSnapshot().byId[sid('published')]).toMatchObject({ id: 'published', blank: true })
+  })
+})
+
+describe('delete', () => {
+  it('removes the confirmed row and moves current navigation to the first remaining Session', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 'current' }, { id: 'next' }])
+    b.svc.open(sid('current'))
+
+    await expect(b.svc.delete(sid('current'))).resolves.toBeUndefined()
+
+    expect(b.api.callsOf('session.delete')).toEqual([{ sessionId: 'current' }])
+    expect(b.svc.list.getSnapshot()).toMatchObject({
+      ids: ['next'],
+      current: 'next',
+    })
+  })
+
+  it('keeps the Session selected when deletion fails', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 'current' }])
+    b.svc.open(sid('current'))
+    b.api.onDelete = () => Promise.resolve(err({
+      code: 'session-not-found', message: 'gone', details: { sessionId: sid('current') },
+    } as never))
+
+    const failure = await b.svc.delete(sid('current')).catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(SessionDeleteError)
+    expect(failure).toMatchObject({ sessionId: 'current', rpcError: { code: 'session-not-found' } })
+    expect(b.svc.list.getSnapshot()).toMatchObject({ ids: ['current'], current: 'current' })
+  })
+
+  it('clears current identity after deleting the last Session', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 'current' }])
+    b.svc.open(sid('current'))
+
+    await b.svc.delete(sid('current'))
+
+    expect(b.svc.list.getSnapshot()).toMatchObject({ ids: [], current: undefined })
+    b.api.onCreate = () => Promise.resolve(ok({ sessionId: sid('current') }))
+    await b.svc.create({ sessionId: sid('current') })
+    expect(b.svc.list.getSnapshot()).toMatchObject({ ids: ['current'], current: undefined })
   })
 })
 

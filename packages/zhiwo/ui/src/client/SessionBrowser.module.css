@@ -29,23 +29,35 @@
   width: 100%;
   min-height: 36px;
   align-items: center;
-  gap: 8px;
   box-sizing: border-box;
-  border: 0;
   border-radius: 8px;
-  padding: 7px 10px;
   background: transparent;
   color: var(--dsw-alias-label-primary);
-  cursor: pointer;
-  text-align: left;
 }
 
-.row:hover {
+.row:hover,
+.row:focus-within {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
 .selected {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.rowMain {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  border: 0;
+  padding: 7px 4px 7px 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
 .title {
@@ -64,4 +76,66 @@
   flex: none;
   border-radius: 50%;
   background: var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+}
+
+.deleteIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  margin-right: 4px;
+  padding: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.row:hover .deleteIcon,
+.row:focus-within .deleteIcon,
+.selected .deleteIcon {
+  opacity: 1;
+}
+
+.deleteIcon:hover {
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.deleteIcon:focus-visible,
+.rowMain:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary-new-colorprimary-new-color);
+  outline-offset: -2px;
+}
+
+.deleteAction {
+  border-color: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.deleteAction:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+}
+
+.deleteStatus,
+.deleteError {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.deleteStatus {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.deleteError {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+@media (hover: none) {
+  .deleteIcon {
+    opacity: 1;
+  }
 }

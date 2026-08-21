@@ -242,6 +242,42 @@ export function runCoordinatorContract(name: string, makeFixture: () => Promise<
       }
     })
 
+    it('deletes a detached materialized session and permits the id to be created again', async () => {
+      const fix = await makeFixture()
+      const { ctx, fiber } = await freshCtx(fix)
+      const id = SessionId('deleted')
+      try {
+        await ctx.sessionPersistence.create(meta(id, WORK))
+        await ctx.sessionPersistence.append(id, oneTurnLog())
+        expect(await ctx.sessionPersistence.delete(id)).toBe(true)
+        expect(await ctx.sessionPersistence.delete(id)).toBe(false)
+        expect((await ctx.sessionPersistence.list()).map(meta => meta.id)).not.toContain(id)
+        await expect(ctx.sessionPersistence.load(id)).rejects.toThrow(`session "${id}" not found`)
+
+        await ctx.sessionPersistence.create(meta(id, WORK))
+        await ctx.sessionPersistence.append(id, oneTurnLog())
+        expect((await ctx.sessionPersistence.load(id)).events).toHaveLength(6)
+      } finally {
+        await fiber.dispose()
+        await fix.cleanup()
+      }
+    })
+
+    it('refuses to delete a live session', async () => {
+      const fix = await makeFixture()
+      const { ctx, fiber } = await freshCtx(fix)
+      try {
+        const session = ctx.sessions.create(SessionId('live-delete'), { meta: { cwd: WORK } })
+        send(session, oneTurnLog())
+        await ctx.sessions.flush(session)
+        await expect(ctx.sessionPersistence.delete(session.id))
+          .rejects.toThrow(`cannot delete session "${session.id}" while it is live`)
+      } finally {
+        await fiber.dispose()
+        await fix.cleanup()
+      }
+    })
+
     it('rejects crash-repair load while a live session owns the persisted prefix', async () => {
       const fix = await makeFixture()
       const { ctx, fiber } = await freshCtx(fix)

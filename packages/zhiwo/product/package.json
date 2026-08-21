@@ -61,7 +61,8 @@
   "dependencies": {
     "@deepseek-ai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/dsh-zhiwo-ui": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@deepseek-ai/schemastery": "workspace:^",
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",

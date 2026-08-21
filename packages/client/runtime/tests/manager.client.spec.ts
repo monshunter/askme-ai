@@ -760,6 +760,25 @@ describe('remaining branches', () => {
     expect(await manager.create()).toMatchObject({ ok: false })
   })
 
+  it('removes a Session only after the delete RPC succeeds', async () => {
+    const api = new FakeApiClient()
+    api.onList = () => Promise.resolve(ok({ items: [summary(S1), summary(S2)] as never[] }))
+    const manager = new SessionManager(api, fakeRemote())
+    await manager.refreshList()
+    const resident = manager.get(S1)
+
+    await expect(manager.delete(S1)).resolves.toMatchObject({ ok: true, value: { deleted: true } })
+    expect(api.callsOf('session.delete')).toEqual([{ sessionId: S1 }])
+    expect(manager.getListSnapshot().items.map(item => item.sessionId)).toEqual([S2])
+    expect(resident.getSnapshot().removed).toBe(true)
+
+    api.onDelete = () => Promise.resolve(err({
+      code: 'session-not-found', message: 'gone', details: { sessionId: S2 },
+    } as never))
+    await expect(manager.delete(S2)).resolves.toMatchObject({ ok: false })
+    expect(manager.getListSnapshot().items.map(item => item.sessionId)).toEqual([S2])
+  })
+
   it('publishes a real Ungrouped summary from workspace-attach-failed', async () => {
     const api = new FakeApiClient()
     api.onCreate = () => Promise.resolve(err({

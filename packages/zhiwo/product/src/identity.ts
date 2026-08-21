@@ -81,7 +81,7 @@ export class VisitorIdentities {
    * @returns Inline script that seeds the short-lived bootstrap cookie.
    */
   bootstrapScript(): string {
-    return `<script>(()=>{if(document.cookie.split('; ').includes('${COOKIE_MARKER}=1'))return;const b=new Uint8Array(16);crypto.getRandomValues(b);const s=btoa(String.fromCharCode(...b)).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');document.cookie='${COOKIE_NAME}=v0.'+s+'; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; SameSite=Strict';document.cookie='${COOKIE_MARKER}=1; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; SameSite=Strict'}</script>`
+    return `<script>(()=>{if(document.cookie.split('; ').includes('${COOKIE_MARKER}=1'))return;const b=new Uint8Array(16);crypto.getRandomValues(b);const s=btoa(String.fromCharCode(...b)).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');document.cookie='${COOKIE_NAME}=v0.'+s+'; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; SameSite=Strict';document.cookie='${COOKIE_MARKER}=1; Path=/; Max-Age=${String(this.cookieMaxAgeSeconds)}; SameSite=Strict'})()</script>`
   }
 
   private sealedCookie(subject: string): string {

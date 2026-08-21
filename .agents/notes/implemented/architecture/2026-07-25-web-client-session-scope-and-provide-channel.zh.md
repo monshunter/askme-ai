@@ -75,9 +75,9 @@ Session 实例与 scope 同生命周期，存活资格 = host listed（一个判
 `workspaces.connectWorkspace(workspaceId): Promise<SessionId>`（归属 WorkspaceRuntime——它同时持有 workspace 规范 path 与 sessions 引用）：
 
 - 复用臂：list mirror 中找 `blank && cwd == workspace.path && sessionIds.includes(id)`——host 自己的成员规则，绝不只按 cwd。没有账户槽位的 cwd 匹配（CLI（命令行界面）/TUI 在 host cwd 创建的会话，或已删除/重建的注册）会打开一个任何分组表面都无法显示在该工作区下的会话，因此落到新建臂（见[成员复用修复](../bug-fix/2026-08-05-workspace-blank-session-reuse-membership.md)）；命中直接返回该 id，不新建。
-- 新建臂：未命中则 `session.create({workspaceId})`，返回新 id。
+- 新建臂：未命中则 `session.create({workspaceId})`，返回新 id。成功响应确认 Workspace 挂接，因此 `WorkspaceManager` 会在 `connectWorkspace` resolve 前，把该 id 加入当前已安装的 Workspace 快照。它会跨无序到达的完整快照保留创建响应已确认的成员关系，直到明确收到 `host/session-removed` 或 `host/workspace-removed` 帧；进行中的 `workspace.list` 只回放挂接增量，保留较新基线的其他字段。
 - 未知 workspaceId fail loud（不静默创建到别处）。
-- 解析保证（两臂同约定）：promise resolve 时返回的 id 已在 list store 且 `sessions.binding(id)` 同步可解析——`SessionRuntime.create` 在 RPC 成功后同步投影列表再 resolve，使 draft 搬运方可以在 open 之前往新 scope 的 machine 写文本，不等 notifier flush。
+- 解析保证（两臂同约定）：promise resolve 时，返回的 id 已在 Session list store 与目标 Workspace 的 `sessionIds` 中，且 `sessions.binding(id)` 同步可解析。因此，draft 搬运方可以在 open 前向新 scope 的 machine 写文本，导航也不会针对陈旧 Workspace 投影打开已入账的 Session。
 - 调用方拿 id 自行 `sessions.open`；首条提示词发送就是普通 `session.prompt`——会话本来就在，失败即普通提示词失败，draft 文本还在 machine 里，重试即再次发送。
 - 全局 New Session 按钮默认取 `recentWorkspaceId`：先比较各 Workspace 内 Session 的最新 `updatedAt`，无 Session 时回退 Workspace `createdAt`，同值保持 Host 顺序；只有完全没有 Workspace 时才 `sessions.clear()` 进入无会话视图。Workspace 分组内的创建动作仍显式命中该 Workspace。
 - 运行时启动时订阅首次完整基线：若已有恢复成功的 current 会话则保持不动，否则自动 `connectWorkspace(recentWorkspaceId)` 并 open 返回的 blank 会话。该策略只结算一次；之后用户主动 clear 不会再次被自动选择覆盖，连接失败则等下一次基线投影重试。
@@ -126,6 +126,7 @@ slot scope 是闭集 `root | session-maybe | session`：
 | Hero 无会话视图与会话 Conversation 整支互换 | 即使外层 layout 不变，Hero、picker 与 composer 子树仍会一起重建，界面产生整块抖动 |
 | 让 InputBar 自身变成 `session-maybe` | 输入状态机、键盘命令面与动作都被迫接受缺省值；只替换 disabled 输入体能把可选性留在外壳边界 |
 | 专用「转正」帧 | `session-status(running:true)` 语义蕴含转正（blank 会话从不 running），加帧是 wire 多一型换零信息 |
+| 等待 `host/workspace-changed` 后再打开已创建的 Session | push 帧异步到达，与一元响应之间没有顺序保证，并可能在浏览器首次连接时缺席。创建成功响应已经确认挂接；等待帧会让导航缺少有界结算点，而允许较旧的完整快照抹去该确认，则会让 blank composer 保持惰性直至刷新。 |
 
 ## 后果
 

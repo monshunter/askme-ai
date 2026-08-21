@@ -28,6 +28,8 @@ export interface WorkspaceListSnapshot {
 
 type WorkspaceDelta =
   | { type: 'upsert'; workspace: WorkspaceView }
+  | { type: 'attach-session'; workspaceId: WorkspaceId; sessionId: SessionId }
+  | { type: 'detach-session'; sessionId: SessionId }
   | { type: 'remove'; workspaceId: WorkspaceId }
   | { type: 'order'; workspaceIds: readonly WorkspaceId[] }
 
@@ -66,6 +68,8 @@ export class WorkspaceManager {
    * into permanent blindfolds and must clear them instead.
    */
   private readonly removedIds = new Set<WorkspaceId>()
+  /** Successful create attachments protected from older cross-carrier Workspace snapshots. */
+  private readonly confirmedAttachments = new Map<WorkspaceId, Set<SessionId>>()
   private snapshotCache: WorkspaceListSnapshot
   private readonly notifier = new Notifier(() => {
     this.snapshotCache = this.buildSnapshot()
@@ -94,7 +98,7 @@ export class WorkspaceManager {
       try {
         const { result } = await this.api.workspace.list({})
         if (result.ok) {
-          let items = result.value.items
+          let items = result.value.items.map(view => this.preserveConfirmedAttachments(view))
           items = items.filter(workspace => !this.removedIds.has(workspace.workspaceId))
           for (const delta of frames) items = applyWorkspaceDelta(items, delta)
           this.installViews(items)
@@ -220,6 +224,27 @@ export class WorkspaceManager {
   }
 
   /**
+   * Publish a Session attachment already committed by `session.create({ workspaceId })`.
+   * A missing Workspace was removed while creation settled and stays absent; an
+   * attachment already carried by a newer Host frame is unchanged.
+   * @param workspaceId - Workspace named by the successful create request.
+   * @param sessionId - Session id returned by that request.
+   */
+  confirmSessionAttachment(workspaceId: WorkspaceId, sessionId: SessionId): void {
+    const workspace = this.itemViews().find(item => item.workspaceId === workspaceId)
+    if (workspace === undefined) return
+    const confirmed = this.confirmedAttachments.get(workspaceId) ?? new Set<SessionId>()
+    confirmed.add(sessionId)
+    this.confirmedAttachments.set(workspaceId, confirmed)
+    if (workspace.sessionIds.includes(sessionId)) return
+    this.upsert(
+      { ...workspace, sessionIds: [sessionId, ...workspace.sessionIds] },
+      undefined,
+      { type: 'attach-session', workspaceId, sessionId },
+    )
+  }
+
+  /**
    * Archive one session in the registry-global set, then install the
    * returned full set without waiting for the changed frame.
    * @param sessionId - session to archive.
@@ -239,6 +264,9 @@ export class WorkspaceManager {
   handleHostEnvelope(envelope: RpcRequest<HostFrame>): void {
     if (envelope.payload.type === 'host/workspace-changed') this.upsert(envelope.payload.workspace)
     else if (envelope.payload.type === 'host/workspace-removed') this.remove(envelope.payload.workspaceId)
+    else if (envelope.payload.type === 'host/session-removed') {
+      this.removeSessionAttachment(envelope.payload.sessionId)
+    }
     else if (envelope.payload.type === 'host/workspace-order-changed') {
       this.orderFrameGeneration++
       this.installOrder(envelope.payload.workspaceIds, true)
@@ -313,9 +341,24 @@ export class WorkspaceManager {
   }
 
   /** Upsert one Host view, optionally retaining the local object that materialized it. */
-  private upsert(view: WorkspaceView, identity?: Workspace): void {
+  private upsert(
+    view: WorkspaceView,
+    identity?: Workspace,
+    refreshDelta?: WorkspaceDelta,
+  ): void {
     if (this.removedIds.has(view.workspaceId)) return
-    this.refreshFrames?.push({ type: 'upsert', workspace: view })
+    const missingConfirmed = this.missingConfirmedAttachments(view)
+    if (missingConfirmed.length > 0) {
+      view = { ...view, sessionIds: [...missingConfirmed, ...view.sessionIds] }
+    }
+    if (refreshDelta !== undefined) this.refreshFrames?.push(refreshDelta)
+    else if (missingConfirmed.length > 0) {
+      this.refreshFrames?.push(...missingConfirmed.map(sessionId => ({
+        type: 'attach-session' as const,
+        workspaceId: view.workspaceId,
+        sessionId,
+      })))
+    } else this.refreshFrames?.push({ type: 'upsert', workspace: view })
     const index = this.items.findIndex(item => item.getSnapshot().view?.workspaceId === view.workspaceId)
     // Mutation responses and changed frames race (two carriers, no ordering):
     // reject a snapshot strictly older than the installed projection so a
@@ -342,6 +385,7 @@ export class WorkspaceManager {
   private remove(workspaceId: WorkspaceId, direct = false): void {
     this.refreshFrames?.push({ type: 'remove', workspaceId })
     this.removedIds.add(workspaceId)
+    this.confirmedAttachments.delete(workspaceId)
     this.committedOrder = this.committedOrder.filter(id => id !== workspaceId)
     const items = this.items.filter(item =>
       item.getSnapshot().view?.workspaceId !== workspaceId)
@@ -355,6 +399,35 @@ export class WorkspaceManager {
     this.items = items
     if (direct) this.notifier.notifyNow()
     else this.notifier.markDirty()
+  }
+
+  /** Keep create-confirmed membership until Session or Workspace removal makes detachment explicit. */
+  private preserveConfirmedAttachments(view: WorkspaceView): WorkspaceView {
+    const missing = this.missingConfirmedAttachments(view)
+    return missing.length === 0 ? view : { ...view, sessionIds: [...missing, ...view.sessionIds] }
+  }
+
+  /** Return create-confirmed members absent from one older Workspace snapshot. */
+  private missingConfirmedAttachments(view: WorkspaceView): SessionId[] {
+    const confirmed = this.confirmedAttachments.get(view.workspaceId)
+    if (confirmed === undefined) return []
+    return [...confirmed].reverse().filter(sessionId => !view.sessionIds.includes(sessionId))
+  }
+
+  /** Apply the explicit Session-removal signal to membership and its create confirmation. */
+  private removeSessionAttachment(sessionId: SessionId): void {
+    for (const [workspaceId, confirmed] of this.confirmedAttachments) {
+      confirmed.delete(sessionId)
+      if (confirmed.size === 0) this.confirmedAttachments.delete(workspaceId)
+    }
+    for (const workspace of this.itemViews()) {
+      if (!workspace.sessionIds.includes(sessionId)) continue
+      this.upsert(
+        { ...workspace, sessionIds: workspace.sessionIds.filter(id => id !== sessionId) },
+        undefined,
+        { type: 'detach-session', sessionId },
+      )
+    }
   }
 
   private installViews(views: readonly WorkspaceView[]): void {
@@ -401,6 +474,18 @@ function upsertWorkspace(items: readonly WorkspaceView[], workspace: WorkspaceVi
 /** Replay one ordered delta over a baseline: upsert in place, or drop the removed id. */
 function applyWorkspaceDelta(items: readonly WorkspaceView[], delta: WorkspaceDelta): WorkspaceView[] {
   if (delta.type === 'upsert') return upsertWorkspace(items, delta.workspace)
+  if (delta.type === 'attach-session') {
+    return items.map((workspace) => {
+      if (workspace.workspaceId !== delta.workspaceId
+        || workspace.sessionIds.includes(delta.sessionId)) return workspace
+      return { ...workspace, sessionIds: [delta.sessionId, ...workspace.sessionIds] }
+    })
+  }
+  if (delta.type === 'detach-session') {
+    return items.map(workspace => workspace.sessionIds.includes(delta.sessionId)
+      ? { ...workspace, sessionIds: workspace.sessionIds.filter(id => id !== delta.sessionId) }
+      : workspace)
+  }
   if (delta.type === 'remove') {
     return items.filter(workspace => workspace.workspaceId !== delta.workspaceId)
   }

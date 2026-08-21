@@ -75,21 +75,28 @@ async function harness(
   const storageDomain = new DomainFacility(ctx, { backend: 'memory', routes: {} })
   ctx.storage.mount('domain', storageDomain)
   ctx.provide('storageDomain', storageDomain)
-  ctx.provide('sessionPersistence', { list: () => Promise.resolve([]) } as never)
+  const deletePersistedSession = vi.fn(() => Promise.resolve(false))
+  ctx.provide('sessionPersistence', {
+    list: () => Promise.resolve([]),
+    delete: deletePersistedSession,
+  } as never)
   await ctx.plugin(WorkspaceRegistry)
 
   const factory: AgentFactory = {
     async createAgent(_ownerCtx, options) {
-      const session = ctx.sessions.create(
+      const session = ctx.sessions.prepare(
         options.sessionId,
         options.meta === undefined ? {} : { meta: options.meta },
       )
+      const detachSession = ctx.sessions.enter(session)
+      ctx.sessions.announce(session)
       const agent = stubAgent(session)
       const unregister = ctx.agents.register(agent)
       return {
         agent,
         dispose: () => {
           unregister()
+          detachSession()
           return Promise.resolve()
         },
       }
@@ -108,7 +115,7 @@ async function harness(
     ...extras.openPath === undefined ? {} : { openPath: extras.openPath },
     ...extras.canOpenPath === undefined ? {} : { canOpenPath: extras.canOpenPath },
   })
-  return { api, ctx, storageDomain, root }
+  return { api, ctx, storageDomain, root, deletePersistedSession }
 }
 
 /** Stage one directory under the harness root for path adoption. */
@@ -409,6 +416,54 @@ describe('session creation and Workspace membership', () => {
 
     expectOk(await api.sessions.create(request({ workspaceId: created.workspaceId, sessionId })))
     expect(expectOk(await api.workspace.list(request({}))).items[0]?.sessionIds).toEqual([sessionId])
+  })
+
+  it('stops and permanently deletes a live Session, then removes its Workspace account', async () => {
+    const { api, ctx, root, deletePersistedSession } = await harness()
+    const workspace = expectOk(await api.workspace.create(request({ path: stageDir(root, 'delete-session') }))).workspace
+    const sessionId = SessionId('session-delete-live')
+    expectOk(await api.sessions.create(request({ workspaceId: workspace.workspaceId, sessionId })))
+    const abort = new AbortController()
+    const stream = api.events.host(request({}), abort.signal)[Symbol.asyncIterator]()
+
+    expectOk(await api.sessions.delete(request({ sessionId })))
+
+    expect(ctx.agents.get(sessionId)).toBeUndefined()
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    expect(deletePersistedSession).toHaveBeenCalledWith(sessionId)
+    expect(expectOk(await api.workspace.list(request({}))).items[0]?.sessionIds).toEqual([])
+    expect(expectOk(await api.sessions.list(request({}))).items).toEqual([])
+    expect((await nextHostFrame(stream)).payload).toMatchObject({ type: 'host/workspace-changed' })
+    expect((await nextHostFrame(stream)).payload).toEqual({ type: 'host/session-removed', sessionId })
+    abort.abort()
+    await expect(stream.next()).resolves.toEqual({ done: true, value: undefined })
+
+    const repeated = await api.sessions.delete(request({ sessionId }))
+    expect(repeated.result).toMatchObject({
+      ok: false,
+      error: { code: 'session-not-found', details: { sessionId } },
+    })
+  })
+
+  it('keeps the Workspace account and suppresses removal when durable deletion fails', async () => {
+    const { api, ctx, root, deletePersistedSession } = await harness()
+    const workspace = expectOk(await api.workspace.create(request({ path: stageDir(root, 'delete-failure') }))).workspace
+    const sessionId = SessionId('session-delete-failure')
+    expectOk(await api.sessions.create(request({ workspaceId: workspace.workspaceId, sessionId })))
+    const abort = new AbortController()
+    const stream = api.events.host(request({}), abort.signal)[Symbol.asyncIterator]()
+    deletePersistedSession.mockRejectedValueOnce(new Error('simulated durable deletion failure'))
+
+    const failed = await api.sessions.delete(request({ sessionId }))
+
+    expect(failed.result.ok).toBe(false)
+    if (failed.result.ok) throw new Error('session.delete unexpectedly succeeded')
+    expect(failed.result.error.code).toBe('internal')
+    expect(failed.result.error.message).toContain('simulated durable deletion failure')
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    expect(expectOk(await api.workspace.list(request({}))).items[0]?.sessionIds).toEqual([sessionId])
+    abort.abort()
+    await expect(stream.next()).resolves.toEqual({ done: true, value: undefined })
   })
 })
 

@@ -185,6 +185,59 @@ describe('WorkspaceManager', () => {
     await refresh
     expect(manager.getSnapshot().items).toEqual([])
   })
+
+  it('keeps a confirmed Session attachment over an in-flight stale baseline', async () => {
+    const api = new FakeApiClient()
+    api.onWorkspaceList = () => Promise.resolve(ok({ items: [workspace('account')] as never[] }))
+    const manager = new WorkspaceManager(api)
+    await manager.refresh()
+
+    const gate = deferred<Awaited<ReturnType<FakeApiClient['onWorkspaceList']>>>()
+    api.onWorkspaceList = () => gate.promise
+    const refresh = manager.refresh()
+    manager.confirmSessionAttachment(wid('account'), sid('fresh'))
+    manager.confirmSessionAttachment(wid('account'), sid('fresh'))
+    manager.confirmSessionAttachment(wid('removed'), sid('ignored'))
+    expect(manager.getSnapshot().items[0]?.sessionIds).toEqual([sid('fresh')])
+
+    manager.handleHostEnvelope({
+      rpcId: 'late-empty-workspace' as never,
+      payload: { type: 'host/workspace-changed', workspace: workspace('account') },
+    })
+    expect(manager.getSnapshot().items[0]?.sessionIds).toEqual([sid('fresh')])
+
+    gate.resolve(ok({ items: [{
+      ...workspace('account', [], '2026-02-01T00:00:00.000Z'),
+      title: 'renamed while refreshing',
+    }] as never[] }))
+    await refresh
+    expect(manager.getSnapshot().items[0]).toMatchObject({
+      title: 'renamed while refreshing',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+      sessionIds: [sid('fresh')],
+    })
+
+    manager.handleHostEnvelope({
+      rpcId: 'session-removed' as never,
+      payload: { type: 'host/session-removed', sessionId: sid('fresh') },
+    })
+    expect(manager.getSnapshot().items[0]?.sessionIds).toEqual([])
+
+    const attachedBeforeResponse = workspace('account', [sid('already-attached')], '2026-03-01T00:00:00.000Z')
+    manager.handleHostEnvelope({
+      rpcId: 'attachment-before-response' as never,
+      payload: { type: 'host/workspace-changed', workspace: attachedBeforeResponse },
+    })
+    manager.confirmSessionAttachment(wid('account'), sid('already-attached'))
+    manager.handleHostEnvelope({
+      rpcId: 'equal-time-stale-frame' as never,
+      payload: {
+        type: 'host/workspace-changed',
+        workspace: { ...attachedBeforeResponse, sessionIds: [] },
+      },
+    })
+    expect(manager.getSnapshot().items[0]?.sessionIds).toEqual([sid('already-attached')])
+  })
 })
 
 describe('WorkspaceRuntime', () => {
@@ -258,6 +311,10 @@ describe('WorkspaceRuntime', () => {
     expect(api.callsOf('session.create')).toEqual([{ workspaceId: 'beta' }])
     // Same guarantee on the create arm (draft hand-off writes the machine pre-open).
     expect(sessions.binding(sid('s-fresh'))).toBeDefined()
+    // The successful create response confirms Workspace attachment even when
+    // this client has not received the matching host/workspace-changed frame.
+    expect(workspaces.list.getSnapshot().items.find(item => item.workspaceId === wid('beta'))?.sessionIds)
+      .toContain(sid('s-fresh'))
 
     // Miss: the stray blank matches gamma's path but is not a gamma member →
     // never reused, a fresh accounted session is created instead.

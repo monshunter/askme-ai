@@ -181,6 +181,10 @@ export class JsonlSessionPersistence extends SessionPersistence implements Persi
     return this.coordinator.append(id, events)
   }
 
+  delete(id: SessionId): Promise<boolean> {
+    return this.coordinator.delete(id)
+  }
+
   override prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
     return this.coordinator.prepare(id, signal)
   }
@@ -232,6 +236,20 @@ export class JsonlSessionPersistence extends SessionPersistence implements Persi
     } catch (error: unknown) {
       signal?.throwIfAborted()
       if (isENOENT(error)) return undefined
+      throw error
+    }
+  }
+
+  /** Remove one resolved log file without following directory-shaped links. */
+  async deleteStored(id: SessionId): Promise<boolean> {
+    await this.ensureRootEncoding()
+    const path = await this.findLog(id)
+    if (path === undefined) return false
+    try {
+      await rm(path)
+      return true
+    } catch (error: unknown) {
+      if (isENOENT(error)) return false
       throw error
     }
   }

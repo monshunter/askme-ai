@@ -255,6 +255,30 @@ export class WorkspaceRegistry extends Service {
   }
 
   /**
+   * Remove a deleted session from every Workspace account and the global
+   * archive set, then discard its cached header facts.
+   * @param sessionId - permanently deleted session identity.
+   * @returns resolution after every durable Workspace update.
+   */
+  forgetSession(sessionId: SessionId): Promise<void> {
+    return this.enqueueOperation(async () => {
+      for (const workspace of this.entities.values()) {
+        if (workspace.sessionIds.includes(sessionId)) await workspace.detachSession(sessionId)
+      }
+      const state = this.requireState()
+      if (state.archivedSessionIds.includes(sessionId)) {
+        await this.setState({
+          ...state,
+          archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId),
+        })
+      }
+      this.headers.delete(sessionId)
+      this.sessionPaths.delete(sessionId)
+      this.invalidSessionPaths.delete(sessionId)
+    })
+  }
+
+  /**
    * Whether a session is live, header-indexed, or present in a fresh
    * persistence listing. Only a definite miss returns false — a failing
    * `sessionPersistence.list()` propagates so storage faults never

@@ -40,6 +40,12 @@ export interface ISessions {
    */
   open(id: SessionId): void
   /**
+   * Permanently delete a top-level session and its durable log.
+   * @param id - session id to delete.
+   * @returns completion after the Host confirms deletion and local navigation converges.
+   */
+  delete(id: SessionId): Promise<void>
+  /**
    * Open a healthy catalog child through its exact direct-parent address.
    * @param address - catalog-derived parent and child ids.
    */

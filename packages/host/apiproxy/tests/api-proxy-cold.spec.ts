@@ -283,6 +283,7 @@ describe('cold history recovery view', () => {
         id === sessionId ? SessionPersistenceRevision('history-recovery-test:1') : undefined,
       ),
       appendBatch: () => Promise.resolve(),
+      deleteStored: () => Promise.resolve(false),
       commitRepair: () => Promise.resolve(),
       list: () => Promise.resolve([structuredClone(meta)]),
     }
@@ -392,7 +393,7 @@ describe('Remote Agent and Session lookup policy', () => {
     const resume = vi.spyOn(ctx.agents, 'resume')
     const defaultAgentLookup = ctx.typert.lookups.get('agent')
     const defaultSessionLookup = ctx.typert.lookups.get('session')
-    createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
     await vi.waitFor(() => {
       expect(ctx.typert.lookups.get('agent')).not.toBe(defaultAgentLookup)
       expect(ctx.typert.lookups.get('session')).not.toBe(defaultSessionLookup)
@@ -413,6 +414,14 @@ describe('Remote Agent and Session lookup policy', () => {
     await expect(coldFailure).rejects.toMatchObject(ownershipFailure)
     await expect(liveFailure).rejects.toBeInstanceOf(TypertLookupFailure)
     await expect(liveFailure).rejects.toMatchObject(ownershipFailure)
+    expect((await api.sessions.delete(request({ sessionId: coldId }))).result).toMatchObject({
+      ok: false,
+      error: ownershipFailure.failure,
+    })
+    expect((await api.sessions.delete(request({ sessionId: liveSession.id }))).result).toMatchObject({
+      ok: false,
+      error: ownershipFailure.failure,
+    })
     expect(resume).not.toHaveBeenCalled()
     expect(inspect).toHaveBeenCalledOnce()
   })

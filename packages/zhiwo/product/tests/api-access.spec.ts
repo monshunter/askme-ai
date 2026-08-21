@@ -1,3 +1,4 @@
+import { Script } from 'node:vm'
 import { describe, expect, it, vi } from 'vitest'
 import type { HostFrame, MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { VisitorIdentities } from '../src/identity.ts'
@@ -54,10 +55,11 @@ describe('Zhiwo native API ownership', () => {
 
     const prefix = identities.resolve(cookie(SUBJECT_A)).sessionPrefix
     const forwardedPayload = (forwarded as {
-      payload: { sessionId: string; workspaceId: string }
+      payload: { sessionId: string; workspaceId: string; agentPreset: string }
     }).payload
     expect(forwardedPayload.sessionId).toMatch(new RegExp(`^${prefix}`))
     expect(forwardedPayload.workspaceId).toBe(WORKSPACE_ID)
+    expect(forwardedPayload.agentPreset).toBe('zhiwo')
     expect(result.headers.get('set-cookie')).toMatch(/HttpOnly; SameSite=Strict/)
     const resultBody = await result.json() as {
       result: { ok: boolean; value: { sessionId: string } }
@@ -120,6 +122,18 @@ describe('Zhiwo native API ownership', () => {
 
     expect(denied.status).toBe(404)
     expect(native).not.toHaveBeenCalled()
+  })
+
+  it('allows an authorized visitor to delete an owned Session', async () => {
+    const { policy, identities } = access()
+    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}delete-me`
+    const native = vi.fn(() => Promise.resolve(response({ deleted: true })))
+
+    const result = await policy.fetch(call('session.delete', { sessionId: owned }), { fetch: native })
+
+    expect(result.status).toBe(200)
+    expect(native).toHaveBeenCalledOnce()
+    expect((await result.json() as { result: { value: unknown } }).result.value).toEqual({ deleted: true })
   })
 
   it('denies an owned-prefix Session whose durable workspace or preset is out of scope', async () => {
@@ -241,6 +255,8 @@ describe('Zhiwo visitor cookies', () => {
     const tampered = identities.resolve(`${sealed?.slice(0, -1)}x`)
     expect(tampered.sessionPrefix).not.toBe(first.sessionPrefix)
     expect(tampered.setCookie).toBeDefined()
-    expect(identities.bootstrapScript()).toContain('crypto.getRandomValues')
+    const bootstrap = identities.bootstrapScript()
+    expect(bootstrap).toContain('crypto.getRandomValues')
+    expect(() => new Script(bootstrap.slice('<script>'.length, -'</script>'.length))).not.toThrow()
   })
 })

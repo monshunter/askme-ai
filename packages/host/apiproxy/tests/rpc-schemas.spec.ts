@@ -7,7 +7,8 @@ import {
 import { z } from 'zod'
 import {
   contentBlockSchema, sessionCancelRequestSchema, sessionCancelValueSchema, sessionCreateRequestSchema,
-  sessionCreateValueSchema, sessionEventSchema, sessionHistoryRequestSchema, sessionHistoryValueSchema,
+  sessionCreateValueSchema, sessionDeleteRequestSchema, sessionDeleteValueSchema,
+  sessionEventSchema, sessionHistoryRequestSchema, sessionHistoryValueSchema,
   sessionIdSchema, sessionListRequestSchema, sessionListValueSchema, sessionModelsRequestSchema,
   sessionModelsValueSchema, sessionPromptRequestSchema, sessionPromptValueSchema,
   sessionSearchRequestSchema, sessionSearchValueSchema, sessionSelectModelRequestSchema,
@@ -161,6 +162,9 @@ describe('sessions domain schemas', () => {
     expect(sessionListRequestSchema.parse({})).toEqual({})
     expect(sessionListRequestSchema.parse({ cursor: 'c' }).cursor).toBe('c')
     expect(sessionListValueSchema.parse({ items: [] }).items).toEqual([])
+    expect(sessionDeleteRequestSchema.parse({ sessionId: 's1' })).toEqual({ sessionId: 's1' })
+    expect(sessionDeleteValueSchema.parse({ deleted: true })).toEqual({ deleted: true })
+    expect(() => sessionDeleteValueSchema.parse({ deleted: false })).toThrow()
     expect(sessionSearchRequestSchema.parse({ query: '  exact phrase  ' })).toEqual({ query: 'exact phrase' })
     expect(() => sessionSearchRequestSchema.parse({ query: '   ' })).toThrow()
     expect(() => sessionSearchRequestSchema.parse({ query: 'bad\0query' })).toThrow(/NUL/)

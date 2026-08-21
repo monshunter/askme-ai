@@ -2374,6 +2374,34 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         if (options.dropSessionCreateResponse) throw new Error('fixture: dropped session.create response after publication')
         return ok(request, { sessionId: created.sessionId })
       },
+      delete: (request) => {
+        const { sessionId } = request.payload
+        const index = sessions.findIndex(summary => summary.sessionId === sessionId)
+        if (index < 0) {
+          return err(request, {
+            code: 'session-not-found',
+            message: `no session ${sessionId}`,
+            details: { sessionId },
+          })
+        }
+        const replay = replays.get(sessionId)
+        if (replay !== undefined) {
+          clearTimeout(replay.timer)
+          replays.delete(sessionId)
+        }
+        sessions.splice(index, 1)
+        logs.delete(sessionId)
+        modelSelections.delete(sessionId)
+        attachedSessions -= 1
+        for (const workspace of workspaces) {
+          if (!workspace.sessionIds.includes(sessionId)) continue
+          workspace.sessionIds = workspace.sessionIds.filter(id => id !== sessionId)
+          workspace.updatedAt = new Date().toISOString()
+          emitHost({ type: 'host/workspace-changed', workspace: { ...workspace } })
+        }
+        emitHost({ type: 'host/session-removed', sessionId })
+        return ok(request, { deleted: true })
+      },
       rename: (request) => {
         const missing = requireSession(request)
         if (missing !== undefined) return missing
@@ -3178,6 +3206,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'session.list': return this.api.sessions.list(request)
       case 'session.search': return this.api.sessions.search(request, signal)
       case 'session.create': return this.api.sessions.create(request)
+      case 'session.delete': return this.api.sessions.delete(request)
       case 'session.history': return this.api.sessions.history(request)
       case 'session.models': return this.api.sessions.models(request)
       case 'session.selectModel': return this.api.sessions.selectModel(request)

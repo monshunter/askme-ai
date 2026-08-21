@@ -10,6 +10,8 @@ Workspace file-location clicks open a dialog over the current conversation witho
 
 The generic Workspace browser and picker are absent from the AskmeAI composition. Its presentation stylesheet also removes the leading command/access-mode cluster, context meter, and Session statistics strip while preserving the model selector and send control. A visible sidebar action switches the native interface and the AskmeAI Session history between Chinese and English without restoring the generic Settings UI. This package contributes no API, durable state store, routing, conversation implementation, or model-visible content.
 
+Each Session-history row exposes a trash action on selection, pointer hover, or keyboard focus. The action opens a localized permanent-deletion confirmation, waits for `SessionRuntime.delete`, and keeps the dialog open with a retryable error if the Host refuses the operation; clicking the trash action never opens the row.
+
 ## Model Experience
 
 None, as the package contributes browser presentation only; nothing here reaches a model request.

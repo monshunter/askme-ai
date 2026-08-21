@@ -135,6 +135,22 @@ export class SessionForkError extends Error {
   }
 }
 
+/** Structured session-delete failure. */
+export class SessionDeleteError extends Error {
+  override readonly name = 'SessionDeleteError'
+
+  /**
+   * @param rpcError - Host business or folded transport error.
+   * @param sessionId - the session that remains available after failure.
+   */
+  constructor(
+    readonly rpcError: RpcError,
+    readonly sessionId: SessionId,
+  ) {
+    super(`session delete failed: ${rpcError.code}: ${rpcError.message}`)
+  }
+}
+
 /** Session assembly handle for SessionProvider/inject factories (identity-stable per session). */
 export interface SessionBinding {
   readonly sessionId: SessionId
@@ -487,6 +503,23 @@ export class SessionRuntime implements ISessions {
     if (!result.ok) throw new SessionCreateError(result.error, opts.sessionId)
     this.projectList()
     return result.value.sessionId
+  }
+
+  /**
+   * Permanently delete one top-level session. When the current session is
+   * deleted, navigation moves to the first remaining session.
+   * @param id - session id to delete.
+   * @throws {SessionDeleteError} when the Host rejects or cannot complete deletion.
+   */
+  async delete(id: SessionId): Promise<void> {
+    const wasCurrent = this.list.getSnapshot().current === id
+    const result = await this.manager.delete(id)
+    if (!result.ok) throw new SessionDeleteError(result.error, id)
+    this.projectList()
+    if (!wasCurrent) return
+    const next = this.list.getSnapshot().ids[0]
+    if (next === undefined) this.clear()
+    else this.open(next)
   }
 
   /**

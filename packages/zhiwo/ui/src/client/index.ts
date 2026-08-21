@@ -118,7 +118,10 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('sidebar.workspaces', () => ctx.slots.register({
     name: 'sidebar.workspaces',
     locale: NS,
-    inject: (): SessionBrowserInjected => ({ open: (sessionId) => { ctx.sessions.open(sessionId) } }),
+    inject: (): SessionBrowserInjected => ({
+      open: (sessionId) => { ctx.sessions.open(sessionId) },
+      remove: sessionId => ctx.sessions.delete(sessionId),
+    }),
   }, SessionBrowser))
 
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({

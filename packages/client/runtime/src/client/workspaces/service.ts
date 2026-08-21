@@ -98,9 +98,10 @@ export class WorkspaceRuntime implements IWorkspaces {
    * list mirror, else create a fresh one on the host (`session.create` births
    * the full Session+Agent — the client holds no intermediate state). The
    * caller owns navigation: take the returned id to `sessions.open`.
-   * Resolution guarantee (both arms): the returned id is already in the list
-   * store and `sessions.binding(id)` resolves synchronously — draft hand-off
-   * may write the new scope's machine before opening.
+   * Resolution guarantee (both arms): the returned id is already in the Session
+   * list and target Workspace membership projections, and `sessions.binding(id)`
+   * resolves synchronously — draft hand-off may write the new scope's machine
+   * before opening.
    * @param workspaceId - chosen Workspace (must be in the workspace list).
    * @returns the reused or newly created session id.
    */
@@ -127,7 +128,10 @@ export class WorkspaceRuntime implements IWorkspaces {
         && workspace.sessionIds.includes(summary.id)
         && !archived.includes(summary.id)) return summary.id
     }
-    const attempt = this.sessions.create({ workspaceId })
+    const attempt = this.sessions.create({ workspaceId }).then((sessionId) => {
+      this.manager.confirmSessionAttachment(workspaceId, sessionId)
+      return sessionId
+    })
       .finally(() => { this.connecting.delete(workspaceId) })
     this.connecting.set(workspaceId, attempt)
     return attempt

@@ -1,0 +1,7 @@
+- dialog "Delete session?":
+  - heading "Delete session?" [level=2]
+  - button "Close delete confirmation":
+    - img
+  - paragraph: The session history for “Deletion acceptance” will be permanently deleted and cannot be recovered.
+  - button "Cancel"
+  - button "Delete"

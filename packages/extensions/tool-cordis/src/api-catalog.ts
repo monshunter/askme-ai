@@ -1137,6 +1137,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'id', description: 'the session the batch belongs to.' }, { name: 'events', description: 'the contiguous batch to persist, in seq order.' }],
       },
       {
+        signature: 'abstract delete(id: SessionId): Promise<boolean>',
+        description: 'Permanently remove one detached session and its backend-owned event log. The session must not be live; implementations serialize deletion behind pending writes and invalidate unpublished preparations before resolving.',
+        parameters: [{ name: 'id', description: 'the persisted session to delete.' }],
+        returns: 'whether a materialized record existed and was removed.',
+      },
+      {
         signature: 'async prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation>',
         description: 'Prepare the exact unpublished Session used by resume. Implementations may reuse object graphs retained by an earlier inspect after confirming their durable revision is still current; disposal releases an unpublished reservation. Revision retries require the durable log to remain unchanged for one read/check round trip; continuous external writers may delay completion.',
         parameters: [{ name: 'id', description: 'persisted session to prepare.' }, { name: 'signal', description: 'optional cancellation for preparation work.' }],
@@ -2255,6 +2261,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Archive one session durably. The session must exist (live or in session persistence); its workspace accounting — or lack of one — is irrelevant. An already archived id resolves without writing.',
         parameters: [{ name: 'sessionId', description: 'The session to archive.' }],
         returns: 'resolution after durability.',
+      },
+      {
+        signature: 'forgetSession(sessionId: SessionId): Promise<void>',
+        description: 'Remove a deleted session from every Workspace account and the global archive set, then discard its cached header facts.',
+        parameters: [{ name: 'sessionId', description: 'permanently deleted session identity.' }],
+        returns: 'resolution after every durable Workspace update.',
       },
       {
         signature: 'async resolveByPath(path: string): Promise<Workspace | undefined>',

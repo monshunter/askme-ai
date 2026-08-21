@@ -873,6 +873,21 @@ describe('workspace mutation and status', () => {
 })
 
 describe('registry-global session archive', () => {
+  it('forgets a deleted Session from Workspace accounting and the archive set', async () => {
+    const dir = await makeDir('forget-home')
+    const result = await harness({ sessions: [header('kept', dir, 100), header('gone', dir, 200)] })
+    const workspace = result.registry.list()[0]!
+    await result.registry.archiveSession(SessionId('gone'))
+
+    await result.registry.forgetSession(SessionId('gone'))
+
+    expect(workspace.sessionIds).toEqual(['kept'])
+    expect(result.registry.archivedSessionIds).toEqual([])
+    expect(storedRecord(result.pool, workspace.id).sessionIds).toEqual(['kept'])
+    expect(storedState(result.pool).archivedSessionIds).toEqual([])
+    await expect(result.registry.forgetSession(SessionId('gone'))).resolves.toBeUndefined()
+  })
+
   it('archives durably in order, idempotently skips repeats, and leaves accounting untouched', async () => {
     const dir = await makeDir('archive-home')
     const result = await harness({ sessions: [header('kept', dir, 100), header('gone', dir, 200)] })

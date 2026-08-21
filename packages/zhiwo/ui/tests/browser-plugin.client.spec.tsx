@@ -39,6 +39,21 @@ const documentT = (key: string, params?: Record<string, unknown>): string => ({
   'document.pdf': `PDF：${String(params?.['name'])}`,
 })[key] ?? key
 
+const sessionBrowserT = (key: string, params?: Record<string, unknown>): string => ({
+  'history.aria': '历史会话',
+  'history.heading': '历史会话',
+  'session.new': '新会话',
+  'session.running': '进行中',
+  'session.delete.label': `删除“${String(params?.['title'])}”`,
+  'session.delete.title': '删除会话？',
+  'session.delete.description': `“${String(params?.['title'])}”的会话记录将被永久删除，无法恢复。`,
+  'session.delete.close': '关闭删除确认',
+  'session.delete.cancel': '取消',
+  'session.delete.confirm': '删除',
+  'session.delete.pending': '正在删除…',
+  'session.delete.error': '删除失败，请重试。',
+})[key] ?? key
+
 async function bench(clean = false) {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
@@ -51,6 +66,7 @@ async function bench(clean = false) {
   const sessionState = { current: clean ? undefined : 'existing' }
   const connectWorkspace = vi.fn(() => Promise.resolve('zhiwo-session'))
   const open = vi.fn()
+  const remove = vi.fn(() => Promise.resolve())
   ctx.reflect.provide('workspaces', {
     list: { getSnapshot: () => workspaceState, subscribe: () => () => undefined },
     connectWorkspace,
@@ -58,6 +74,7 @@ async function bench(clean = false) {
   ctx.reflect.provide('sessions', {
     list: { getSnapshot: () => sessionState, subscribe: () => () => undefined },
     open,
+    delete: remove,
   })
   ctx.reflect.provide('connection', {
     rpc: { call: vi.fn() },
@@ -72,7 +89,7 @@ async function bench(clean = false) {
           : { kind: 'single', scope: 'root' },
     ])),
   } as never, () => null)
-  return { ctx, slots, connectWorkspace, open }
+  return { ctx, slots, connectWorkspace, open, remove }
 }
 
 describe('Zhiwo browser shell', () => {
@@ -306,6 +323,7 @@ describe('Zhiwo browser shell', () => {
 
   it('projects native Sessions without any Workspace controls or labels', () => {
     const open = vi.fn()
+    const remove = vi.fn(() => Promise.resolve())
     const sessions = {
       ids: ['current', 'history'],
       byId: {
@@ -320,6 +338,7 @@ describe('Zhiwo browser shell', () => {
       useSessions: (select: (value: unknown) => unknown) => select(sessions),
       useWorkspaces: (select: (value: unknown) => unknown) => select({ archivedSessionIds: [] }),
       open,
+      remove,
       t: (key: string) => ({
         'history.aria': '历史会话',
         'history.heading': '历史会话',
@@ -348,6 +367,7 @@ describe('Zhiwo browser shell', () => {
       }),
       useWorkspaces: (select: (value: unknown) => unknown) => select({ archivedSessionIds: [] }),
       open: () => {},
+      remove: () => Promise.resolve(),
       t: (key: string) => ({
         'history.aria': 'Session history',
         'history.heading': 'History',
@@ -360,5 +380,62 @@ describe('Zhiwo browser shell', () => {
     expect(view.getByText('History')).toBeTruthy()
     expect(view.getByText('New Session')).toBeTruthy()
     expect(view.getByLabelText('Running')).toBeTruthy()
+  })
+
+  it('confirms permanent Session deletion without opening the row', async () => {
+    const open = vi.fn()
+    const remove = vi.fn(() => Promise.resolve())
+    const sessions = {
+      ids: ['history'],
+      byId: {
+        history: { id: 'history', displayTitle: 'Ferry 项目简介', blank: false, running: false },
+      },
+      current: 'history',
+    }
+    render(<SessionBrowser {...{
+      wide: true,
+      expandSidebar: () => {},
+      useSessions: (select: (value: unknown) => unknown) => select(sessions),
+      useWorkspaces: (select: (value: unknown) => unknown) => select({ archivedSessionIds: [] }),
+      open,
+      remove,
+      t: sessionBrowserT,
+    } as unknown as SessionBrowserProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '删除“Ferry 项目简介”' }))
+    expect(open).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '删除会话？' })).toBeTruthy()
+    expect(screen.getByText('“Ferry 项目简介”的会话记录将被永久删除，无法恢复。')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '删除' }))
+    await waitFor(() => { expect(remove).toHaveBeenCalledWith('history') })
+    await waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull() })
+  })
+
+  it('keeps the confirmation open and clears pending state when deletion fails synchronously', async () => {
+    const remove = vi.fn(() => { throw new Error('unavailable') })
+    render(<SessionBrowser {...{
+      wide: true,
+      expandSidebar: () => {},
+      useSessions: (select: (value: unknown) => unknown) => select({
+        ids: ['history'],
+        byId: {
+          history: { id: 'history', displayTitle: 'Ferry 项目简介', blank: false, running: false },
+        },
+        current: 'history',
+      }),
+      useWorkspaces: (select: (value: unknown) => unknown) => select({ archivedSessionIds: [] }),
+      open: () => {},
+      remove,
+      t: sessionBrowserT,
+    } as unknown as SessionBrowserProps} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '删除“Ferry 项目简介”' }))
+    fireEvent.click(screen.getByRole('button', { name: '删除' }))
+
+    expect((await screen.findByRole('alert')).textContent).toBe('删除失败，请重试。')
+    expect(screen.getByRole('dialog', { name: '删除会话？' })).toBeTruthy()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('button', { name: '删除' }).hasAttribute('disabled')).toBe(false)
   })
 })

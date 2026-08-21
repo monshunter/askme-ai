@@ -787,7 +787,8 @@
     },
     "packages/zhiwo/product": {
       "ignoreDependencies": [
-        "@deepseek-ai/dsh-zhiwo-ui"
+        "@deepseek-ai/dsh-zhiwo-ui",
+        "zod"
       ]
     },
     "packages/zhiwo/ui": {

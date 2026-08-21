@@ -24,6 +24,7 @@ const ALLOWED_METHODS = new Set([
   'llm.providers',
   'session.cancel',
   'session.create',
+  'session.delete',
   'session.fork',
   'session.history',
   'session.list',
@@ -344,6 +345,7 @@ export class ZhiwoApiAccess implements ConnectionApiAccess {
         payload: {
           sessionId: `${identity.sessionPrefix}${randomUUID()}`,
           workspaceId: this.workspaceId,
+          agentPreset: 'zhiwo',
         },
       }
     } else if (method === 'session.fork') {
