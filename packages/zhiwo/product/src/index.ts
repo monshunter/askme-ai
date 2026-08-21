@@ -14,15 +14,13 @@ import { SessionId, type SessionHeader } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-workspace'
 import {
-  ZHIWO_FAVICON_DATA_URL,
-  ZHIWO_FAVICON_SVG,
+  ZHIWO_LOGO_PATH,
   ZHIWO_PRODUCT_TITLE,
   ZHIWO_WEB_MANIFEST,
 } from './branding.ts'
 import { ZhiwoApiAccess } from './api-access.ts'
 import { VisitorIdentities } from './identity.ts'
 import { loadIdentitySecret } from './identity-secret.ts'
-import { installOutputPolicy } from './output-policy.ts'
 import { ZhiwoQuestionService, ZhiwoQuestions } from './questions.ts'
 
 function isZhiwoHeader(header: SessionHeader | undefined, workspaceRoot: string): boolean {
@@ -47,7 +45,7 @@ async function authorizeSession(
 export const name = 'zhiwo-product'
 
 /** Services required for the one Workspace and browser access policy. */
-export const inject = ['connection', 'llm', 'sessions', 'webServer', 'workspaceRegistry']
+export const inject = ['connection', 'sessions', 'webServer', 'workspaceRegistry']
 
 /** Zhiwo host configuration. */
 export interface Config {
@@ -73,7 +71,7 @@ function serveBrandAsset(
   request: IncomingMessage,
   response: ServerResponse,
   contentType: string,
-  body: string,
+  body: string | Buffer,
 ): void {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     response.writeHead(405)
@@ -83,6 +81,11 @@ function serveBrandAsset(
   response.writeHead(200, { 'content-type': contentType, 'cache-control': 'no-cache' })
   response.end(request.method === 'HEAD' ? undefined : body)
 }
+
+const VISUAL_ASSETS = [
+  { path: '/assets/zhiwo/index-bg.png', file: new URL('../assets/askmeai-index-bg.png', import.meta.url) },
+  { path: ZHIWO_LOGO_PATH, file: new URL('../assets/askmeai-logo.png', import.meta.url) },
+] as const
 
 function documentRelativePath(path: string | null): string | undefined {
   if (path === null || !path.startsWith('/') || path.includes('\\') || path.includes('\0')) return undefined
@@ -209,13 +212,16 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     await loadIdentitySecret(config.dshHome),
     (config.cookieMaxAgeDays ?? 180) * 24 * 60 * 60,
   )
+  const visualAssets = await Promise.all(VISUAL_ASSETS.map(async asset => ({
+    ...asset,
+    body: await readFile(asset.file),
+  })))
   const questions = new ZhiwoQuestions(
     workspace.path,
     ctx.sessions,
     (message) => { ctx.logger.warn(message) },
     config.dshHome,
   )
-  installOutputPolicy(ctx, workspace.path)
   new ZhiwoQuestionService(ctx, questions)
   ctx.effect(() => questions.start(), 'zhiwo-product: background question catalog')
   ctx.effect(
@@ -234,13 +240,15 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
       serveBrandAsset(request, response, 'application/manifest+json', ZHIWO_WEB_MANIFEST)
     },
   }), 'zhiwo-product: install manifest')
-  ctx.effect(() => ctx.webServer.register({
-    kind: 'exact',
-    path: '/favicon.svg',
-    handler: (request, response) => {
-      serveBrandAsset(request, response, 'image/svg+xml', ZHIWO_FAVICON_SVG)
-    },
-  }), 'zhiwo-product: favicon asset')
+  for (const asset of visualAssets) {
+    ctx.effect(() => ctx.webServer.register({
+      kind: 'exact',
+      path: asset.path,
+      handler: (request, response) => {
+        serveBrandAsset(request, response, 'image/png', asset.body)
+      },
+    }), `zhiwo-product: visual asset ${asset.path}`)
+  }
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/api/zhiwo/document',
@@ -254,7 +262,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   ctx.effect(() => ctx.webServer.tapIndex((html) => {
     const branded = html
       .replace(/<title>[^<]*<\/title>/u, `<title>${ZHIWO_PRODUCT_TITLE}</title>`)
-      .replace(/<link\s+rel="icon"[^>]*>/u, `<link rel="icon" type="image/svg+xml" href="${ZHIWO_FAVICON_DATA_URL}" />`)
+      .replace(/<link\s+rel="icon"[^>]*>/u, `<link rel="icon" type="image/png" href="${ZHIWO_LOGO_PATH}" />`)
     const head = '<head>'
     const offset = branded.indexOf(head)
     if (offset < 0) throw new Error('zhiwo browser identity bootstrap requires an index.html <head>')

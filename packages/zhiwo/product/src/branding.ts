@@ -3,11 +3,8 @@
 /** Stable product title placed in the initial Zhiwo document. */
 export const ZHIWO_PRODUCT_TITLE = '知我AI'
 
-/** Rounded “知” icon served to browser tabs and install surfaces. */
-export const ZHIWO_FAVICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#111318"/><text x="16" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="white">知</text></svg>'
-
-/** Self-contained rounded “知” favicon used before the Client starts. */
-export const ZHIWO_FAVICON_DATA_URL = `data:image/svg+xml,${encodeURIComponent(ZHIWO_FAVICON_SVG)}`
+/** Product logo served to browser tabs, install surfaces, and Client brand slots. */
+export const ZHIWO_LOGO_PATH = '/assets/zhiwo/logo.png'
 
 /** Zhiwo install metadata served instead of the generic Web manifest. */
 export const ZHIWO_WEB_MANIFEST = `${JSON.stringify({
@@ -17,5 +14,5 @@ export const ZHIWO_WEB_MANIFEST = `${JSON.stringify({
   start_url: '/',
   scope: '/',
   display: 'fullscreen',
-  icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+  icons: [{ src: ZHIWO_LOGO_PATH, sizes: '1254x1254', type: 'image/png', purpose: 'any' }],
 }, null, 2)}\n`

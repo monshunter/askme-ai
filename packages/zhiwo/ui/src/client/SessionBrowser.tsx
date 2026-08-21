@@ -21,13 +21,29 @@ export type SessionBrowserProps =
   PropsRuntime<'sidebar.workspaces'> & SessionBrowserInjected & PropsLocale<'zhiwo'>
 
 /** Render visitor-owned conversations without exposing the underlying Workspace. */
-export function SessionBrowser({ wide, useSessions, useWorkspaces, open, remove, t }: SessionBrowserProps) {
+export function SessionBrowser({
+  wide, expandSidebar, useSessions, useWorkspaces, open, remove, t,
+}: SessionBrowserProps) {
   const sessions = useSessions(state => state)
   const archived = useWorkspaces(state => state.archivedSessionIds)
   const [deleteTarget, setDeleteTarget] = useState<{ id: SessionId; title: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  if (!wide) return null
+  if (!wide) {
+    return (
+      <button
+        type="button"
+        className={css.railHistory}
+        data-zhiwo-history-rail
+        aria-label={t('history.heading')}
+        onClick={expandSidebar}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden>
+          <path d="M5 5h14v11H9l-4 3v-3H5z" />
+        </svg>
+      </button>
+    )
+  }
   const hidden = new Set(archived)
   const rows = sessions.ids.flatMap((id) => {
     const summary = sessions.byId[id]
@@ -58,7 +74,7 @@ export function SessionBrowser({ wide, useSessions, useWorkspaces, open, remove,
 
   return (
     <>
-      <nav className={css.root} aria-label={t('history.aria')}>
+      <nav className={css.root} data-zhiwo-session-browser aria-label={t('history.aria')}>
         <div className={css.heading}>{t('history.heading')}</div>
         <div className={css.list}>
           {rows.map((summary) => {

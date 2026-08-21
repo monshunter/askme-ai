@@ -7,6 +7,8 @@ import { parseQuestionResponse, type QuestionItem, type QuestionResponse } from 
 afterEach(() => { cleanup() })
 
 const copy: Record<string, string> = {
+  'brand.name': '知我AI',
+  'hero.greeting': '你好，欢迎来了解我',
   'questions.welcome.aria': '推荐问题',
   'questions.welcome.heading': '可以这样了解我',
   'questions.followup.aria': '后续推荐问题',
@@ -44,6 +46,7 @@ function session(turnEndSeq?: number) {
     data: { reason: { kind: 'completed' } },
   }
   return {
+    blank: turnEndSeq === undefined,
     running: false,
     turnEnds: turnEndSeq === undefined ? new Map() : new Map([[1, turnEndSeq]]),
     chat: {
@@ -86,6 +89,7 @@ describe('Zhiwo question suggestions', () => {
     const view = render(<QuestionSuggestions {...props({ requestQuestions, setDraft })} />)
 
     await waitFor(() => { expect(view.getAllByRole('button')).toHaveLength(5) })
+    expect(view.getByText('你好，欢迎来了解我')).toBeTruthy()
     expect(view.getAllByText(/^中文 /u)).toHaveLength(4)
     fireEvent.click(view.getByText('中文 a'))
     expect(setDraft).toHaveBeenCalledWith('中文 a')
@@ -113,6 +117,7 @@ describe('Zhiwo question suggestions', () => {
     const view = render(<QuestionSuggestions {...props({ requestQuestions, turnEndSeq: 19 })} />)
 
     await waitFor(() => { expect(view.getByText('中文 context-a')).toBeTruthy() })
+    expect(view.queryByText('你好，欢迎来了解我')).toBeNull()
     expect(view.getByRole('heading', { name: '还可以继续问' })).toBeTruthy()
     expect(requestQuestions).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'followup', turnEndSeq: 19,

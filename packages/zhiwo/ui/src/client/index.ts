@@ -7,6 +7,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { ZhiwoBrandMark, ZhiwoBrandName } from './Brand.tsx'
 import {
   createDocumentPreviewController,
@@ -14,7 +15,7 @@ import {
   type DocumentPreviewInjected,
 } from './DocumentPreview.tsx'
 import { documentPreviewHref } from './document-preview-url.ts'
-import { ZhiwoGreeting } from './Greeting.tsx'
+import { ZhiwoGreeting, ZhiwoHeroMarkPlaceholder } from './Greeting.tsx'
 import { ZhiwoLanguageAction, type ZhiwoLanguageInjected } from './LanguageAction.tsx'
 import { SessionBrowser, type SessionBrowserInjected } from './SessionBrowser.tsx'
 import { QuestionSuggestions, type QuestionSuggestionsInjected } from './QuestionSuggestions.tsx'
@@ -25,10 +26,19 @@ import './zhiwo.css'
 export { documentPreviewHref } from './document-preview-url.ts'
 
 /** Required services: native presentation and Workspace/Session runtimes. */
-export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection']
+export const inject = ['slots', 'sessions', 'workspaces', 'locale', 'connection', 'layout', 'theme']
 
 /** Dictionary namespace owned by the Zhiwo overlay. */
 const NS = 'zhiwo'
+
+/** Keep the product on its single supported light palette. */
+function installLightTheme(ctx: ClientContext): () => void {
+  const enforce = (snapshot: ThemeSnapshot): void => {
+    if (snapshot.preference !== 'light') ctx.theme.setTheme('light')
+  }
+  enforce(ctx.theme.getTheme())
+  return ctx.on('theme/change', enforce)
+}
 
 /** Connect a clean browser to Zhiwo's sole Workspace through the native runtime. */
 function startDefaultWorkspace(ctx: ClientContext): () => void {
@@ -65,6 +75,92 @@ function startDefaultWorkspace(ctx: ClientContext): () => void {
   }
 }
 
+/** Apply product presentation details that sit outside the registered Zhiwo slot occupants. */
+function installProductPresentation(ctx: ClientContext): () => void {
+  if (typeof document === 'undefined') return () => undefined
+  const body = document.body
+  const previous = body.getAttribute('data-zhiwo-ui')
+  body.setAttribute('data-zhiwo-ui', '')
+  const layout = ctx.get('layout')
+  let desiredCollapsed: boolean | undefined
+  let waiting = false
+  let scheduled = false
+  let disposed = false
+
+  const reconcile = (): void => {
+    scheduled = false
+    if (disposed) return
+    const frame = document.querySelector<HTMLElement>('[data-details-collapsed]')
+    if (frame === null) return
+    const collapsed = frame.hasAttribute('data-sidebar-collapsed')
+    const sidebarState = collapsed ? 'rail' : 'wide'
+    frame.setAttribute('data-zhiwo-sidebar-state', sidebarState)
+    const shell = frame.querySelector<HTMLElement>('[data-slot="sidebar"]')?.firstElementChild
+    if (shell instanceof HTMLElement) shell.setAttribute('data-zhiwo-sidebar-shell', sidebarState)
+    const chinese = document.documentElement.lang.startsWith('zh')
+    for (const status of document.querySelectorAll<HTMLElement>('[data-turn-status]')) {
+      status.setAttribute('data-zhiwo-localized-status', '')
+      status.setAttribute('aria-label', chinese
+        ? '知我正在深入了解…'
+        : 'AskmeAI is getting to know this better…')
+    }
+    if (!waiting || layout === undefined || window.innerWidth < 900) {
+      waiting = false
+      return
+    }
+    if (desiredCollapsed === undefined) return
+    if (collapsed === desiredCollapsed) {
+      waiting = false
+      return
+    }
+    layout.toggleSidebar()
+  }
+  const schedule = (): void => {
+    if (scheduled || disposed) return
+    scheduled = true
+    queueMicrotask(reconcile)
+  }
+  const syncSession = (): void => {
+    const sessions = ctx.sessions.list.getSnapshot()
+    const summary = sessions.current === undefined ? undefined : sessions.byId[sessions.current]
+    const next = sessions.current === undefined ? true : summary?.blank
+    if (next === undefined || next === desiredCollapsed) return
+    desiredCollapsed = next
+    waiting = true
+    schedule()
+  }
+
+  const observer = new MutationObserver(schedule)
+  observer.observe(document.getElementById('root') ?? body, {
+    attributeFilter: ['data-sidebar-collapsed'],
+    attributes: true,
+    childList: true,
+    subtree: true,
+  })
+  const localeObserver = new MutationObserver(schedule)
+  localeObserver.observe(document.documentElement, { attributeFilter: ['lang'], attributes: true })
+  const unsubscribe = ctx.sessions.list.subscribe(syncSession)
+  syncSession()
+  schedule()
+  return () => {
+    disposed = true
+    observer.disconnect()
+    localeObserver.disconnect()
+    unsubscribe()
+    document.querySelector<HTMLElement>('[data-zhiwo-sidebar-state]')
+      ?.removeAttribute('data-zhiwo-sidebar-state')
+    for (const shell of document.querySelectorAll<HTMLElement>('[data-zhiwo-sidebar-shell]')) {
+      shell.removeAttribute('data-zhiwo-sidebar-shell')
+    }
+    for (const status of document.querySelectorAll<HTMLElement>('[data-zhiwo-localized-status]')) {
+      status.removeAttribute('data-zhiwo-localized-status')
+      status.removeAttribute('aria-label')
+    }
+    if (previous === null) body.removeAttribute('data-zhiwo-ui')
+    else body.setAttribute('data-zhiwo-ui', previous)
+  }
+}
+
 /**
  * Install the Zhiwo brand and native default-Workspace selection.
  * @param ctx - Client root context.
@@ -72,7 +168,9 @@ function startDefaultWorkspace(ctx: ClientContext): () => void {
 export function apply(ctx: ClientContext): void {
   const documentPreview = createDocumentPreviewController()
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'zhiwo-ui: dictionaries')
+  ctx.effect(() => installLightTheme(ctx), 'zhiwo-ui: fixed light theme')
   ctx.effect(() => startDefaultWorkspace(ctx), 'zhiwo-ui: default Workspace selection')
+  ctx.effect(() => installProductPresentation(ctx), 'zhiwo-ui: product presentation')
   ctx.on('ui/product-title', (next) => {
     next()
     return zh['brand.name']
@@ -140,7 +238,7 @@ export function apply(ctx: ClientContext): void {
         ctx.slots.inject('conversation.hero.headline', function* () {
           yield ctx.slots.register({ name: 'sidebar.brand.mark' }, ZhiwoBrandMark)
           yield ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, ZhiwoBrandName)
-          yield ctx.slots.register({ name: 'conversation.hero.brand.mark' }, ZhiwoBrandMark)
+          yield ctx.slots.register({ name: 'conversation.hero.brand.mark' }, ZhiwoHeroMarkPlaceholder)
           yield ctx.slots.register({ name: 'conversation.hero.headline', locale: NS }, ZhiwoGreeting)
         }))))
 }

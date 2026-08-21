@@ -3192,7 +3192,7 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages
 
 ## `@deepseek-ai/dsh-zhiwo-product`
 
-Requires: `connection` · `llm` · `sessions` · `webServer` · `workspaceRegistry`
+Requires: `connection` · `sessions` · `webServer` · `workspaceRegistry`
 
 ```ts config-catalog
 /** Zhiwo host configuration. */
@@ -3208,7 +3208,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/zhiwo/product/src/index.ts:53`](../packages/zhiwo/product/src/index.ts)
+Source: [`packages/zhiwo/product/src/index.ts:51`](../packages/zhiwo/product/src/index.ts)
 
 ## Loadable plugins with no config
 

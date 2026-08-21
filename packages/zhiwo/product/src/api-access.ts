@@ -15,13 +15,15 @@ import type {
   ConnectionApiHeaders,
 } from '@deepseek-ai/dsh-client-connection'
 import type { VisitorIdentities, VisitorIdentity } from './identity.ts'
-import { containsUnsafeValue } from './output-policy.ts'
 import { ZHIWO_QUESTIONS_ENDPOINT } from './questions.ts'
 
 const ALLOWED_METHODS = new Set([
   'host.describe',
   'llm.models',
   'llm.providers',
+  'messageFeedback/delete',
+  'messageFeedback/list',
+  'messageFeedback/put',
   'session.cancel',
   'session.create',
   'session.delete',
@@ -68,8 +70,10 @@ function foreignSessionId(identity: VisitorIdentity, payload: unknown): string |
 }
 
 function methodArguments(method: string, payload: unknown): unknown {
-  if (method !== ZHIWO_QUESTIONS_ENDPOINT) return payload
-  return record(record(payload)?.['args'])?.['request']
+  if (method === ZHIWO_QUESTIONS_ENDPOINT || method.startsWith('messageFeedback/')) {
+    return record(record(payload)?.['args'])?.['request']
+  }
+  return payload
 }
 
 function visibleSummary(
@@ -107,15 +111,13 @@ async function filteredValue(
   const body = record(value)
   if (body === undefined) return value
   switch (method) {
-    case 'session.list': {
-      const items = Array.isArray(body['items'])
-        ? body['items'].map(item => visibleSummary(item, workspaceRoot, identity)).filter(item => item !== undefined)
-        : []
+    case 'session.list':
       return {
         ...body,
-        items: items.filter(item => !containsUnsafeValue(item, workspaceRoot)),
+        items: Array.isArray(body['items'])
+          ? body['items'].map(item => visibleSummary(item, workspaceRoot, identity)).filter(item => item !== undefined)
+          : [],
       }
-    }
     case 'session.search': {
       const items: unknown[] = Array.isArray(body['items']) ? body['items'] : []
       const visibility = await Promise.all(items.map(async (item) => {
@@ -123,7 +125,6 @@ async function filteredValue(
         const sessionId = row?.['sessionId']
         return owns(identity, sessionId)
           && await authorizeSession(sessionId, signal)
-          && !containsUnsafeValue(row, workspaceRoot)
           ? item
           : undefined
       }))
@@ -176,13 +177,6 @@ async function filterRpcResponse(
   const envelope = record(body)
   const result = record(envelope?.['result'])
   if (envelope === undefined || result?.['ok'] !== true) return body
-  if (method === 'session.history'
-    && containsUnsafeValue(result['value'], workspaceRoot)) {
-    return {
-      ...envelope,
-      result: { ...result, value: { events: [], hasMore: false } },
-    }
-  }
   const value = await filteredValue(
     method,
     result['value'],

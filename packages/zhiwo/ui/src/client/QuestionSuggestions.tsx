@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import type { RpcResult } from '@deepseek-ai/dsh-client-connection/client'
-import { IconRefreshOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconChevronRightOutline14, IconRefreshOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { ZhiwoIntroduction } from './Greeting.tsx'
 import type { QuestionRequest, QuestionResponse, QuestionSource } from './question-contract.ts'
 import { parseQuestionResponse } from './question-contract.ts'
 import type {} from './locales.ts'
@@ -33,6 +34,45 @@ interface SuggestionState {
   readonly items: QuestionResponse['items']
   readonly error: string | undefined
   readonly loading: boolean
+}
+
+function SuggestionIcon({ index, followup }: { readonly index: number; readonly followup: boolean }) {
+  if (index === 0 && followup) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path d="M4 5.5h16v11H9l-4 3v-3H4z" />
+        <path d="M8 9h8M8 12h5" />
+      </svg>
+    )
+  }
+  if (index === 0) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path d="M6 2.8h8l4 4V21H6z" />
+        <path d="M14 2.8V7h4M9 11h6M9 15h6" />
+      </svg>
+    )
+  }
+  if (index === 1) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <rect x="3.5" y="3.5" width="17" height="17" rx="2.5" />
+        <path d="m12 7 1.4 2.9 3.2.5-2.3 2.2.6 3.2-2.9-1.5-2.9 1.5.6-3.2-2.3-2.2 3.2-.5z" />
+      </svg>
+    )
+  }
+  if (index === 2) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden>
+        <path d="M4 20V12h4v8zM10 20V5h4v15zM16 20V9h4v11z" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M6 22V3M7 4h11l-3 4 3 4H7" />
+    </svg>
+  )
 }
 
 function lastCompletedTurnEndSeq(
@@ -128,6 +168,7 @@ export function QuestionSuggestions({
   return (
     <section className={css.dock} aria-label={t(followup ? 'questions.followup.aria' : 'questions.welcome.aria')} data-question-kind={target.kind}>
       <div className={css.panel}>
+        {session.blank && <ZhiwoIntroduction placement="dock" t={t} />}
         <div className={css.header}>
           <h2 className={css.title}>{t(followup ? 'questions.followup.heading' : 'questions.welcome.heading')}</h2>
           <button
@@ -144,7 +185,7 @@ export function QuestionSuggestions({
         </div>
         {visibleItems.length === 4 && (
           <div className={css.grid}>
-            {visibleItems.map(item => (
+            {visibleItems.map((item, index) => (
               <button
                 type="button"
                 key={item.id}
@@ -154,7 +195,11 @@ export function QuestionSuggestions({
                 disabled={locked}
                 onClick={() => { inputActions.setDraft(item.texts[locale]) }}
               >
-                {item.texts[locale]}
+                <span className={css.questionIcon} data-zhiwo-question-icon>
+                  <SuggestionIcon index={index} followup={followup} />
+                </span>
+                <span className={css.questionLabel}>{item.texts[locale]}</span>
+                <IconChevronRightOutline14 className={css.chevron} size={16} />
               </button>
             ))}
           </div>

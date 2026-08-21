@@ -136,6 +136,21 @@ describe('Zhiwo native API ownership', () => {
     expect((await result.json() as { result: { value: unknown } }).result.value).toEqual({ deleted: true })
   })
 
+  it('admits native message feedback only for an authorized visitor Session', async () => {
+    const { policy, identities } = access()
+    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}feedback`
+    const native = vi.fn(() => Promise.resolve(response({ ok: true, value: { items: [] } })))
+    const payload = { args: { request: { sessionId: owned } } }
+
+    const accepted = await policy.fetch(call('messageFeedback/list', payload), { fetch: native })
+    expect(accepted.status).toBe(200)
+    expect(native).toHaveBeenCalledOnce()
+
+    const denied = await policy.fetch(call('messageFeedback/put', payload, SUBJECT_B), { fetch: native })
+    expect(denied.status).toBe(404)
+    expect(native).toHaveBeenCalledOnce()
+  })
+
   it('denies an owned-prefix Session whose durable workspace or preset is out of scope', async () => {
     const { identities } = access()
     const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}wrong-scope`
@@ -147,20 +162,21 @@ describe('Zhiwo native API ownership', () => {
     expect(native).not.toHaveBeenCalled()
   })
 
-  it('fails closed when persisted history contains host environment data', async () => {
+  it('preserves native history for an authorized visitor Session', async () => {
     const { policy, identities } = access()
-    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}legacy`
+    const owned = `${identities.resolve(cookie(SUBJECT_A)).sessionPrefix}history`
+    const value = {
+      events: [{ event: { type: 'assistant/chunk', data: { chunk: {
+        type: 'text-delta', index: 0, text: `workspace: ${WORKSPACE_ROOT}/profile.md`,
+      } } } }],
+      hasMore: false,
+    }
     const result = await policy.fetch(call('session.history', { sessionId: owned }), {
-      fetch: () => Promise.resolve(response({
-        events: [{ event: { type: 'assistant/chunk', data: { chunk: {
-          type: 'text-delta', index: 0, text: `workspace: ${WORKSPACE_ROOT}/profile.md`,
-        } } } }],
-        hasMore: false,
-      })),
+      fetch: () => Promise.resolve(response(value)),
     })
 
     expect((await result.json() as { result: { value: unknown } }).result.value)
-      .toEqual({ events: [], hasMore: false })
+      .toEqual(value)
   })
 
   it('admits the private question endpoint only for a visitor-owned Session', async () => {

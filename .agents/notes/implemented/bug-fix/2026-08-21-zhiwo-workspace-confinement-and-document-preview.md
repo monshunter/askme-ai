@@ -16,7 +16,7 @@ The client Workspace runtime exposes a `workspaces/open-path` claim waterfall. E
 
 The `zhiwo` Agent preset mounts a scoped execution policy for `read`, `glob`, and `grep`. Before dispatch, the policy resolves both the Session cwd and requested target through `ctx.fs` and requires canonical containment. It rejects absolute and cross-platform path syntax before resolution. A successful `read` value replaces the provider display path with the normalized request-relative path, which also supplies the browser read card and its clickable location.
 
-The browser transport now treats the Session-id owner prefix as necessary but insufficient. Existing Session operations also require the configured Workspace cwd and `zhiwo` preset, while Session and Workspace projections expose `/` instead of a Host path. Raw Session export is unavailable. History containing private Host state is withheld. Current Zhiwo responses are buffered before their chunks enter the Session log; an answer containing a Host absolute path, Host username, or private runtime setting becomes one fixed safe response. Zhiwo also disables the local spill backend: capped discovery output asks the Agent to narrow its query instead of publishing a physical temporary-file locator.
+The browser transport treats the Session-id owner prefix as necessary but insufficient. Existing Session operations also require the configured Workspace cwd and `zhiwo` preset, while Session and Workspace projections expose `/` instead of a Host path. Raw Session export is unavailable. Authorized Session history and model output retain native DSH behavior because every file below `userdata/` is owner-visible material. Zhiwo disables the local spill backend: capped discovery output asks the Agent to narrow its query instead of publishing a physical temporary-file locator.
 
 The persona separately excludes tests, fixtures, mocks, and examples from owner facts unless formal owner material confirms them. This semantic rule complements filesystem confinement: a file can be inside `userdata/` and still be unsuitable evidence about its owner.
 
@@ -24,16 +24,14 @@ The persona separately excludes tests, fixtures, mocks, and examples from owner 
 
 Exposing `host.openPath` to the anonymous Zhiwo browser would have restored the native click path, but it would let a remote visitor ask the Host operating system to open local paths. A browser preview keeps the interaction useful without widening that authority.
 
-Persona instructions alone cannot constrain filesystem providers or prevent an unsafe partial response from reaching the Session log. A read-only sandbox also addresses mutation rather than discovery. Runtime checks at tool execution, API projection, and model publication are therefore required.
+Persona instructions alone cannot constrain filesystem providers. A read-only sandbox also addresses mutation rather than discovery. Runtime checks at tool execution and Session ownership are therefore required.
 
 ## Consequences
 
 Conversation document links now render bounded UTF-8 text in the browser without granting anonymous visitors the Host native opener. Ordinary dsh products still use `host.openPath` when no product claims the path.
 
-Zhiwo discovery cannot read through absolute paths, traversal, or external symlinks. Neither successful tool output nor API metadata exposes the physical Workspace root. Unsafe legacy history remains stored by native persistence but is not projected to Zhiwo browsers; no user data or Session artifact is deleted.
-
-Buffering current model responses delays visible answer tokens until the response passes the publication check. Tool lifecycle events remain visible while the model works. This latency tradeoff is limited to Zhiwo Sessions and keeps unsafe partial text out of both the browser and durable Session log.
+Zhiwo discovery cannot read through absolute paths, traversal, or external symlinks. Neither successful tool output nor API metadata exposes the physical Workspace root. Authorized histories and model streams remain complete, so the native Agent can continue from reasoning into tool calls and publish material found below `userdata/` without a product-specific content filter.
 
 ## Verification
 
-Focused tests cover native opener fallback and product claims; Markdown, source, PDF, and image dialog views; SPA-fallback and unsupported-format rejection; safe document responses and traversal refusal; canonical tool denial with relative successful read values; exact Workspace/preset Session authorization; virtual path projections; raw-export refusal; legacy-history withholding; and pre-publication output replacement. The assembled keyless Zhiwo Web scenario mounts the shipped preset, executes a real in-Workspace read, rejects an external traversal, verifies that an over-cap glob result has no Host spill locator, checks the three-tool catalog and complete persona, and replays the visible answer through the native Agent Loop.
+Focused tests cover native opener fallback and product claims; Markdown, source, PDF, and image dialog views; SPA-fallback and unsupported-format rejection; safe document responses and traversal refusal; canonical tool denial with relative successful read values; exact Workspace/preset Session authorization; virtual path projections; raw-export refusal; and complete authorized history projection. The assembled keyless Zhiwo Web scenario mounts the shipped preset, executes a real in-Workspace read, rejects an external traversal, verifies that an over-cap glob result has no Host spill locator, checks the three-tool catalog and complete persona, and replays the visible answer through the native Agent Loop.

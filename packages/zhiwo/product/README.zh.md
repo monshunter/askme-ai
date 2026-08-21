@@ -15,7 +15,7 @@ Patch 后的 Web Server 默认绑定 `127.0.0.1:18000`。单次启动时显式 `
 
 `zhiwo` Preset 告诉模型，它是资料所有者面向访客的个人 Agent。回答中的第一人称指资料所有者，不能指 Agent 或访客；测试 Fixture 与示例也不能在缺少所有者正式资料确认时成为所有者事实。该 Preset 使用维护中的文件系统 Consumer，并把 `mutations` 设为 `false`，同时挂载维护中的文件搜索 Consumer，因此模型只会看到 `read`、`glob` 和 `grep`。[`zhiwo-agent-policy`](../agent-policy/README.md) 插件通过文件系统 Provider 解析每个读取或搜索根，并要求其规范目标仍位于 Session `cwd` 下；绝对路径、`..` 穿越和指向外部目标的符号链接会在读取或启动搜索进程前失败。成功的 read 值只暴露规范化相对路径。文件仍从 `userdata/` 实时读取；修改原文件后，后续 Turn 无需同步即可检索到新内容。
 
-Host 插件还会在原生 Connection Transport 外安装一条访问策略。无状态签名 Cookie 为原生 Session ID 派生不透明的 Owner Prefix。该策略强制新 Session 使用已注册 Workspace 与 `zhiwo` Preset，并在每次访问既有 Session 前再次验证这两个事实；它还会过滤列表与两条原生 WebSocket 事件流，并把 Workspace、Host Home 与 Session cwd 投影成虚拟根 `/`。原始 Session 导出保持不可用。含私有宿主路径的旧历史会被隐藏；当前 Zhiwo 模型输出则在写入 Session 前缓冲，只要回答包含宿主绝对路径、宿主用户名或私有运行时设置，就替换成固定的安全回答。该策略只在 `DSH_HOME` 下持久化一把私有签名密钥，不拥有 Visitor、Message 或 Session 数据库。因此不同浏览器 Profile 共用只读 Workspace，但原生对话历史保持隔离。
+Host 插件还会在原生 Connection Transport 外安装一条访问策略。无状态签名 Cookie 为原生 Session ID 派生不透明的 Owner Prefix。该策略强制新 Session 使用已注册 Workspace 与 `zhiwo` Preset，并在每次访问既有 Session 前再次验证这两个事实；它还会过滤列表与两条原生 WebSocket 事件流，并把 Workspace、Host Home 与 Session cwd 投影成虚拟根 `/`。原始 Session 导出保持不可用。已授权的 Session 历史与模型流保留原生 DSH 行为；`userdata/` 下的全部资料都可以读取与展示。该策略只在 `DSH_HOME` 下持久化一把私有签名密钥，不拥有 Visitor、Message 或 Session 数据库。因此不同浏览器 Profile 共用只读 Workspace，但原生对话历史保持隔离。
 
 原生 DSH 文档链接通常通过 `host.openPath` 启动操作系统默认应用。知我不会把这项 API 暴露给匿名浏览器；Client 通过原生 Workspace Runtime 接管会话文件位置，请求 `/api/zhiwo/document`，确认响应媒体类型后在当前页面的弹窗中展示。Markdown 使用富文本渲染器，其他 UTF-8 文本和源码使用支持语法着色的代码视图，PDF 与 PNG、JPEG、GIF 或 WebP 图片使用有大小限制的内嵌查看器；HTML 只按纯文本提供和展示，绝不执行。Host 只接受虚拟绝对路径，把真实文件目标解析到 `userdata/` 下，拒绝路径穿越、外部符号链接、目录、超大文件、错误的 PDF 或图片签名、不支持的二进制格式和无效 UTF-8。允许的响应设置 `no-store` 与 `nosniff`；没有安全内置查看器的格式会明确失败，不会调用宿主操作系统。默认预览上限为 2 MiB，可通过 `documentMaxBytes` 配置。
 
@@ -23,7 +23,7 @@ Host 插件还会在原生 Connection Transport 外安装一条访问策略。�
 
 应用启动时还会异步安排一次清单扫描，读取 Workspace 下符合条件的直接子目录与普通文档元数据，用名称、类型、大小和修改时间生成指纹，不读取文档正文。指纹命中 `DSH_HOME` 下带版本的私有缓存时，直接发布其中的 100 个双语语义问题对，不重新构建或重写；目录或文档变化时重新构建并原子替换缓存。存在项目时为 50 个全局问题对加 50 个项目问题对，否则为 100 个全局问题对。内部 `zhiwo/questions` Remote 复用现有 Typert Gateway 与 Visitor Session 校验。问候页响应包含四个轮换问题；已完成 Turn 的响应严格包含两个由该 Turn 推断的问题和两个初始化全局问题。提示问题不会额外调用模型。
 
-Host 在返回知我AI页面前改写初始 Document Title 与 Favicon，并用“知我AI”元数据替换通用安装 Manifest 与图标资源。Client 让空白和已有标题标签都保持同一个“知我AI”产品名与圆角“知”标记，因此通用 DSH 构建名与鱼形图标不会残留在浏览器或安装界面。
+Host 在返回知我AI页面前改写初始 Document Title 与 Favicon，并用“知我AI”元数据替换通用安装 Manifest 与图标资源。它通过固定的同源 `/assets/zhiwo/*` 路由提供随包交付的 AskmeAI Logo 与一张全页面共用水墨背景。Client 在浏览器、安装、侧栏与问候区使用同一个 Logo，空白和已有标题标签则保持“知我AI”产品名。访问策略只会在通过与其他 Session 操作相同的访问者 Session Ownership 与 Preset 校验后，才允许调用原生消息反馈方法。
 
 ## Model Experience
 

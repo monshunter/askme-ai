@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-这个纯浏览器插件填充原生 DSH 品牌、空白会话标题、Input Dock、Product Title 与消息 Placeholder 扩展点，把当前访问者的原生 Session 投影成不含 Workspace 概念的历史列表，并通过原生 Workspace 与 Session Runtime 把干净浏览器连接到 Host 投影的唯一 Workspace。中文界面显示“知我AI”与“你好，欢迎来了解我”，英文界面显示“AskmeAI”与“Hi, get to know me here”；其中第一人称指 Agent 所代表的资料所有者。浏览器标签始终使用“知我AI”与圆角“知” Favicon，通用预览标记则被本地化问候语替换。消息输入框显示“问问我的经历、项目、能力或计划”，不会把访客写成被介绍的对象，也不再询问想构建什么。
+这个纯浏览器插件填充原生 DSH 品牌、空白会话标题、Input Dock、Product Title 与消息 Placeholder 扩展点，把当前访问者的原生 Session 投影成不含 Workspace 概念的历史列表，并通过原生 Workspace 与 Session Runtime 把干净浏览器连接到 Host 投影的唯一 Workspace。中文界面显示“知我AI”与“你好，欢迎来了解我”，英文界面显示“AskmeAI”与“Hi, get to know me here”；其中第一人称指 Agent 所代表的资料所有者。浏览器、安装、侧栏与问候区使用同一份随包交付的 AskmeAI Logo，通用预览标记则被本地化问候语替换。样式只修改原生 `grep`、`glob`、`read` 与推理行的前导图标和主标题：搜索使用产品地球图标和“全局检索”，读取使用产品文件夹图标和“资料提取”，推理使用“思考中”。原生摘要、文件链接、可展开卡片、推理正文、文档预览操作和检查控件保持不变。运行尾部把 `Deep diving...` 替换为产品专属中英文文案。消息输入框显示“问问我的经历、项目、能力或计划”，不会把访客写成被介绍的对象，也不再询问想构建什么。产品只支持浅色主题，并把原生 Theme Runtime 固定为 `light`，因此操作系统或已保存的深色偏好不会把深色组件 Token 混入绿米视觉系统。Product 在 `/assets/zhiwo/index-bg.png` 提供一张全页面共用同源水墨背景；空白 Session 使用紧凑图标栏，进入对话后展示完整历史侧栏。
 
 Input Dock 会验证并呈现 Product 私有 Connection 方法返回的四个双语语义问题。空白 Session 显示问候问题；最近完成的 Turn 严格显示两个上下文问题与两个全局问题。点击问题只填充原生 Draft，不会直接发送。自动刷新与手动刷新都采用 Single-flight；刷新失败或响应格式错误时，原来的四个问题保持可用。切换语言只改变同一组语义 ID 的文本，不会再发请求。
 

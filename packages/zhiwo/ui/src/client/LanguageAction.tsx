@@ -33,12 +33,22 @@ export function ZhiwoLanguageAction({ wide, useLocale, setLocale, t }: ZhiwoLang
     <button
       type="button"
       className={css.root}
+      data-zhiwo-language
       data-wide={wide || undefined}
       aria-label={label}
       title={label}
       onClick={() => { setLocale(target) }}
     >
-      <span className={css.glyph} aria-hidden>{active === 'zh' ? '中' : 'EN'}</span>
+      <span className={css.glyph} aria-hidden>
+        {wide
+          ? active === 'zh' ? '中' : 'EN'
+          : (
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M3.8 12h16.4M12 3.5c2.2 2.4 3.4 5.2 3.4 8.5S14.2 18.1 12 20.5M12 3.5C9.8 5.9 8.6 8.7 8.6 12s1.2 6.1 3.4 8.5" />
+            </svg>
+          )}
+      </span>
       {wide && <span className={css.label}>{t('language.label')}</span>}
       {wide && <span className={css.target}>{targetLabel}</span>}
     </button>

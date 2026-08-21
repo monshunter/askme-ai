@@ -3210,7 +3210,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/zhiwo/product/src/index.ts:53`](../packages/zhiwo/product/src/index.ts)
+来源：[`packages/zhiwo/product/src/index.ts:51`](../packages/zhiwo/product/src/index.ts)
 
 ## 无配置的可加载插件
 

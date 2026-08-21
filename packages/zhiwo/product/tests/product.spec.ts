@@ -8,7 +8,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionApiAccess, HostConnectionHandle } from '@deepseek-ai/dsh-client-connection'
 import type { WebRoute, WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { SessionStore } from '@deepseek-ai/dsh-session'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
 import * as ZhiwoProduct from '../src/index.ts'
 
 const temporaryRoots: string[] = []
@@ -98,7 +97,6 @@ describe('Zhiwo native web overlay', () => {
       },
     } as WebServer)
     await ctx.plugin(ConnectionFixture).await()
-    await ctx.plugin(LlmRuntime).await()
     await ctx.plugin(SessionStore).await()
     await ctx.plugin(WorkspaceRegistryFixture).await()
     await ctx.plugin(ZhiwoProduct, { workspaceRoot: root, dshHome: join(root, '.dsh') }).await()
@@ -110,13 +108,14 @@ describe('Zhiwo native web overlay', () => {
     const html = indexes[0]!('<html><head><link rel="icon" type="image/svg+xml" href="/favicon.svg" /><title>DSH Local Build</title></head></html>')
     expect(html).toContain('zhiwo_guest=v0.')
     expect(html).toContain('<title>知我AI</title>')
-    expect(html).toContain('data:image/svg+xml')
+    expect(html).toContain('<link rel="icon" type="image/png" href="/assets/zhiwo/logo.png" />')
     expect(html).not.toContain('DSH Local Build')
     expect(html).not.toContain('/favicon.svg')
 
     expect(routes.map(route => route.path).toSorted()).toEqual([
       '/api/zhiwo/document',
-      '/favicon.svg',
+      '/assets/zhiwo/index-bg.png',
+      '/assets/zhiwo/logo.png',
       '/manifest.webmanifest',
     ])
     const manifest = await requestRoute(routes.find(route => route.path === '/manifest.webmanifest')!)
@@ -124,12 +123,15 @@ describe('Zhiwo native web overlay', () => {
     expect(JSON.parse(manifest.body)).toMatchObject({
       name: '知我AI',
       short_name: '知我AI',
-      icons: [{ src: '/favicon.svg', type: 'image/svg+xml' }],
+      icons: [{ src: '/assets/zhiwo/logo.png', sizes: '1254x1254', type: 'image/png' }],
     })
     expect(manifest.body).not.toMatch(/DeepSeek Harness|DSH/u)
-    const favicon = await requestRoute(routes.find(route => route.path === '/favicon.svg')!)
-    expect(favicon).toMatchObject({ status: 200, contentType: 'image/svg+xml' })
-    expect(favicon.body).toContain('>知</text>')
+    const logo = await requestRoute(routes.find(route => route.path === '/assets/zhiwo/logo.png')!)
+    expect(logo).toMatchObject({ status: 200, contentType: 'image/png' })
+    expect(logo.body.length).toBeGreaterThan(800_000)
+    const indexBackground = await requestRoute(routes.find(route => route.path === '/assets/zhiwo/index-bg.png')!)
+    expect(indexBackground).toMatchObject({ status: 200, contentType: 'image/png' })
+    expect(indexBackground.body.length).toBeGreaterThan(1_000_000)
 
     const document = routes.find(route => route.path === '/api/zhiwo/document')!
     await expect(requestRoute(document, '?path=%2Fprofile.md')).resolves.toMatchObject({

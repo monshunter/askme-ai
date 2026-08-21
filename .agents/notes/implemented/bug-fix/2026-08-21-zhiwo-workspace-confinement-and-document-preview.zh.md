@@ -16,7 +16,7 @@ Client Workspace Runtime 提供 `workspaces/open-path` 接管瀑布。每个产�
 
 `zhiwo` Agent Preset 为 `read`、`glob` 与 `grep` 挂载作用域内的执行策略。分发前，策略通过 `ctx.fs` 解析 Session cwd 与请求目标，并要求二者满足规范包含关系；绝对路径与跨平台路径语法在解析前被拒绝。成功的 `read` 值会把 Provider 展示路径替换成规范化的请求相对路径；浏览器 read Card 及其可点击位置也使用该值。
 
-浏览器 Transport 现在把 Session ID Owner Prefix 视为必要但不充分的条件。访问已有 Session 时还必须满足配置的 Workspace cwd 与 `zhiwo` Preset；Session 与 Workspace 投影只暴露 `/`，不暴露 Host 路径。原始 Session 导出不可用。包含私有 Host 状态的历史会被隐藏。当前知我回答会在 Chunk 进入 Session Log 前缓冲；只要回答包含 Host 绝对路径、Host 用户名或私有运行时设置，就替换成一条固定的安全回答。知我也会禁用本地 Spill 后端：被截断的资料发现结果只提示 Agent 缩小查询，不会发布物理临时文件位置。
+浏览器 Transport 把 Session ID Owner Prefix 视为必要但不充分的条件。访问已有 Session 时还必须满足配置的 Workspace cwd 与 `zhiwo` Preset；Session 与 Workspace 投影只暴露 `/`，不暴露 Host 路径。原始 Session 导出不可用。已授权的 Session 历史与模型输出保留原生 DSH 行为，因为 `userdata/` 下的每个文件都是所有者允许展示的资料。知我禁用本地 Spill 后端：被截断的资料发现结果只提示 Agent 缩小查询，不会发布物理临时文件位置。
 
 Persona 还会把测试、Fixture、Mock 和示例排除在所有者事实之外，除非正式的所有者资料明确确认。该语义规则是文件系统限制的补充：文件可以位于 `userdata/` 内，但仍不适合作为描述所有者的证据。
 
@@ -24,16 +24,14 @@ Persona 还会把测试、Fixture、Mock 和示例排除在所有者事实之外
 
 向匿名知我浏览器暴露 `host.openPath` 可以恢复原生点击路径，但也会允许远程访客要求 Host 操作系统打开本地路径。浏览器预览既保留了交互能力，也不扩大这项权限。
 
-仅靠 Persona 指令无法限制文件系统 Provider，也不能阻止不安全的局部回答进入 Session Log。只读 Sandbox 解决的也是修改而非资料发现问题。因此，必须在 Tool 执行、API 投影与模型发布三个运行时位置执行检查。
+仅靠 Persona 指令无法限制文件系统 Provider。只读 Sandbox 解决的也是修改而非资料发现问题。因此，必须在 Tool 执行与 Session Ownership 两处执行运行时检查。
 
 ## 后果
 
 会话中的文档链接现在可以在浏览器内展示有大小限制的 UTF-8 文本，而不向匿名访客授予 Host 原生打开能力。普通 dsh 产品在没有产品接管路径时仍使用 `host.openPath`。
 
-知我的资料发现无法通过绝对路径、路径穿越或外部符号链接读取。成功的 Tool 输出与 API 元数据都不再暴露物理 Workspace 根。含不安全内容的旧历史仍由原生 Persistence 保存，但不会投影给知我浏览器；不会删除任何用户数据或 Session Artifact。
-
-当前模型回答需要在通过发布检查后才显示 Token。模型工作期间的 Tool Lifecycle Event 仍然可见。这项延迟权衡只作用于知我 Session，并保证不安全的局部文本既不会进入浏览器，也不会进入持久 Session Log。
+知我的资料发现无法通过绝对路径、路径穿越或外部符号链接读取。成功的 Tool 输出与 API 元数据都不暴露物理 Workspace 根。已授权的历史与模型流保持完整，因此原生 Agent 可以从推理继续进入 Tool Call，并且无需产品专属内容过滤器就能展示从 `userdata/` 找到的资料。
 
 ## 验证
 
-聚焦测试覆盖原生打开回退与产品接管、Markdown／源码／PDF／图片弹窗视图、SPA 回退与不支持格式拒绝、安全文档响应与路径穿越拒绝、规范 Tool 拒绝与相对 read 成功值、精确 Workspace／Preset Session 授权、虚拟路径投影、原始导出拒绝、旧历史隐藏，以及发布前输出替换。组装后的无密钥知我 Web 场景会挂载随仓库交付的 Preset，执行真实的工作区内读取，拒绝外部路径穿越，验证超限 glob 结果不含 Host Spill 位置，检查三个 Tool 的目录与完整 Persona，并通过原生 Agent Loop 回放可见回答。
+聚焦测试覆盖原生打开回退与产品接管、Markdown／源码／PDF／图片弹窗视图、SPA 回退与不支持格式拒绝、安全文档响应与路径穿越拒绝、规范 Tool 拒绝与相对 read 成功值、精确 Workspace／Preset Session 授权、虚拟路径投影、原始导出拒绝，以及完整的已授权历史投影。组装后的无密钥知我 Web 场景会挂载随仓库交付的 Preset，执行真实的工作区内读取，拒绝外部路径穿越，验证超限 glob 结果不含 Host Spill 位置，检查三个 Tool 的目录与完整 Persona，并通过原生 Agent Loop 回放可见回答。

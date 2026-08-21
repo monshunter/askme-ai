@@ -10,7 +10,11 @@ import {
   DocumentPreview,
   type DocumentPreviewInjected,
 } from '../src/client/DocumentPreview.tsx'
-import { ZhiwoGreeting, type ZhiwoGreetingProps } from '../src/client/Greeting.tsx'
+import {
+  ZhiwoGreeting,
+  ZhiwoHeroMarkPlaceholder,
+  type ZhiwoGreetingProps,
+} from '../src/client/Greeting.tsx'
 import { apply, documentPreviewHref, inject } from '../src/client/index.ts'
 import { ZhiwoLanguageAction, type ZhiwoLanguageActionProps } from '../src/client/LanguageAction.tsx'
 import { SessionBrowser, type SessionBrowserProps } from '../src/client/SessionBrowser.tsx'
@@ -67,6 +71,19 @@ async function bench(clean = false) {
   const connectWorkspace = vi.fn(() => Promise.resolve('zhiwo-session'))
   const open = vi.fn()
   const remove = vi.fn(() => Promise.resolve())
+  let themePreference = 'system'
+  const theme = {
+    getTheme: () => ({
+      preference: themePreference,
+      active: { id: themePreference, colorScheme: themePreference === 'dark' ? 'dark' : 'light', tokens: {} },
+      themes: [],
+      revision: 1,
+    }),
+    setTheme: vi.fn((preference: string) => {
+      themePreference = preference
+      ctx.emit('theme/change', theme.getTheme() as never)
+    }),
+  }
   ctx.reflect.provide('workspaces', {
     list: { getSnapshot: () => workspaceState, subscribe: () => () => undefined },
     connectWorkspace,
@@ -79,6 +96,8 @@ async function bench(clean = false) {
   ctx.reflect.provide('connection', {
     rpc: { call: vi.fn() },
   })
+  ctx.reflect.provide('layout', { toggleSidebar: vi.fn() })
+  ctx.reflect.provide('theme', theme)
   slots.register({
     name: 'root',
     children: Object.fromEntries(HOLES.map(name => [name,
@@ -89,12 +108,26 @@ async function bench(clean = false) {
           : { kind: 'single', scope: 'root' },
     ])),
   } as never, () => null)
-  return { ctx, slots, connectWorkspace, open, remove }
+  return { ctx, slots, connectWorkspace, open, remove, theme }
 }
 
 describe('Zhiwo browser shell', () => {
   it('declares the native services used by the browser overlay', () => {
-    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'connection'])
+    expect(inject).toEqual(['slots', 'sessions', 'workspaces', 'locale', 'connection', 'layout', 'theme'])
+  })
+
+  it('pins the only supported product theme to light', async () => {
+    const subject = await bench()
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    expect(subject.theme.setTheme).toHaveBeenCalledWith('light')
+    subject.theme.setTheme.mockClear()
+    subject.theme.setTheme('dark')
+    expect(subject.theme.setTheme).toHaveBeenLastCalledWith('light')
+    expect(subject.theme.getTheme().preference).toBe('light')
+
+    await fiber.dispose()
   })
 
   it('fills the native brand slots and removes them on teardown', async () => {
@@ -103,9 +136,57 @@ describe('Zhiwo browser shell', () => {
     await fiber.await()
 
     for (const hole of HOLES) expect(subject.slots.entries(hole)).toHaveLength(1)
+    expect(document.body.hasAttribute('data-zhiwo-ui')).toBe(true)
 
     await fiber.dispose()
     for (const hole of HOLES) expect(subject.slots.entries(hole)).toHaveLength(0)
+    expect(document.body.hasAttribute('data-zhiwo-ui')).toBe(false)
+  })
+
+  it('labels the rendered sidebar shell from the native collapsed state', async () => {
+    const previousLang = document.documentElement.lang
+    document.documentElement.lang = 'zh'
+    const frame = document.createElement('div')
+    frame.setAttribute('data-details-collapsed', '')
+    frame.setAttribute('data-sidebar-collapsed', '')
+    const slot = document.createElement('div')
+    slot.setAttribute('data-slot', 'sidebar')
+    const shell = document.createElement('div')
+    const turnStatus = document.createElement('div')
+    turnStatus.setAttribute('data-turn-status', '')
+    const reasoning = document.createElement('div')
+    reasoning.setAttribute('data-variant', 'think')
+    const reasoningRow = document.createElement('div')
+    reasoningRow.setAttribute('data-disclosure-row', '')
+    reasoning.append(reasoningRow)
+    slot.append(shell)
+    frame.append(slot, turnStatus, reasoning)
+    document.body.append(frame)
+    const subject = await bench()
+    const fiber = subject.ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    await waitFor(() => {
+      expect(frame.getAttribute('data-zhiwo-sidebar-state')).toBe('rail')
+      expect(shell.getAttribute('data-zhiwo-sidebar-shell')).toBe('rail')
+      expect(turnStatus.getAttribute('aria-label')).toBe('知我正在深入了解…')
+    })
+    frame.removeAttribute('data-sidebar-collapsed')
+    await waitFor(() => {
+      expect(frame.getAttribute('data-zhiwo-sidebar-state')).toBe('wide')
+      expect(shell.getAttribute('data-zhiwo-sidebar-shell')).toBe('wide')
+    })
+    document.documentElement.lang = 'en'
+    await waitFor(() => {
+      expect(turnStatus.getAttribute('aria-label')).toBe('AskmeAI is getting to know this better…')
+    })
+
+    await fiber.dispose()
+    expect(frame.hasAttribute('data-zhiwo-sidebar-state')).toBe(false)
+    expect(shell.hasAttribute('data-zhiwo-sidebar-shell')).toBe(false)
+    expect(turnStatus.hasAttribute('aria-label')).toBe(false)
+    frame.remove()
+    document.documentElement.lang = previousLang
   })
 
   it('connects a clean browser to the sole Workspace through native runtimes', async () => {
@@ -278,8 +359,9 @@ describe('Zhiwo browser shell', () => {
 
   it('renders the requested mark size and localized product names', () => {
     const mark = render(<ZhiwoBrandMark size={34} className="hero-mark" />)
-    expect(mark.container.querySelector('svg')?.getAttribute('width')).toBe('34')
-    expect(mark.container.querySelector('svg')?.getAttribute('class')).toBe('hero-mark')
+    expect(mark.container.querySelector('img')?.getAttribute('width')).toBe('34')
+    expect(mark.container.querySelector('img')?.getAttribute('class')).toBe('hero-mark')
+    expect(mark.container.querySelector('img')?.getAttribute('src')).toBe('/assets/zhiwo/logo.png')
     mark.unmount()
 
     const chineseName = { t: () => '知我AI' } as unknown as ComponentProps<typeof ZhiwoBrandName>
@@ -288,15 +370,19 @@ describe('Zhiwo browser shell', () => {
     expect(render(<ZhiwoBrandName {...englishName} />).getByText('AskmeAI')).toBeTruthy()
   })
 
-  it('renders the localized greeting without the generic preview headline', () => {
+  it('suppresses the native hero row because the input dock owns the introduction', () => {
     const view = render(<ZhiwoGreeting {...{
       className: 'headline',
-      t: () => '你好，欢迎来了解我',
+      t: (key: string) => key,
     } as unknown as ZhiwoGreetingProps} />)
 
-    expect(view.getByText('你好，欢迎来了解我').getAttribute('class')).toBe('headline')
-    expect(view.queryByText('探索未至之境')).toBeNull()
-    expect(view.queryByText('预览版')).toBeNull()
+    expect(view.container.querySelector('[data-zhiwo-native-hero-hidden]')).not.toBeNull()
+    expect(view.container.textContent).toBe('')
+    view.unmount()
+
+    const mark = render(<ZhiwoHeroMarkPlaceholder />)
+    expect(mark.container.querySelector('[data-zhiwo-native-hero-brand-hidden]')).not.toBeNull()
+    expect(mark.container.textContent).toBe('')
   })
 
   it('renders a visible language action and switches to the other shipped locale', () => {
@@ -354,6 +440,23 @@ describe('Zhiwo browser shell', () => {
     expect(view.queryByText('未分组')).toBeNull()
     view.getByRole('button', { name: 'Ferry 项目简介' }).click()
     expect(open).toHaveBeenCalledWith('history')
+  })
+
+  it('expands the full history browser from its compact rail action', () => {
+    const expandSidebar = vi.fn()
+    const view = render(<SessionBrowser {...{
+      wide: false,
+      expandSidebar,
+      useSessions: (select: (value: unknown) => unknown) => select({ ids: [], byId: {} }),
+      useWorkspaces: (select: (value: unknown) => unknown) => select({ archivedSessionIds: [] }),
+      open: () => {},
+      remove: () => Promise.resolve(),
+      t: sessionBrowserT,
+    } as unknown as SessionBrowserProps} />)
+
+    fireEvent.click(view.getByRole('button', { name: '历史会话' }))
+    expect(expandSidebar).toHaveBeenCalledOnce()
+    expect(view.queryByRole('navigation')).toBeNull()
   })
 
   it('renders the flat Session history in English', () => {

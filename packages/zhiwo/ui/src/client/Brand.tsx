@@ -13,10 +13,15 @@ type ZhiwoBrandNameProps = PropsRuntime<'sidebar.brand.name'> & PropsLocale<'zhi
  */
 export function ZhiwoBrandMark({ size, className }: ZhiwoBrandMarkProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
-      <rect width="32" height="32" rx="9" fill="currentColor" />
-      <text x="16" y="22" textAnchor="middle" fontSize="18" fontWeight="700" fill="white">知</text>
-    </svg>
+    <img
+      src="/assets/zhiwo/logo.png"
+      width={size}
+      height={size}
+      className={className}
+      data-zhiwo-brand-mark
+      alt=""
+      aria-hidden
+    />
   )
 }
 
@@ -26,5 +31,5 @@ export function ZhiwoBrandMark({ size, className }: ZhiwoBrandMarkProps) {
  * @returns The Zhiwo wordmark.
  */
 export function ZhiwoBrandName({ t }: ZhiwoBrandNameProps) {
-  return <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.04em' }}>{t('brand.name')}</span>
+  return <span data-zhiwo-brand-name>{t('brand.name')}</span>
 }

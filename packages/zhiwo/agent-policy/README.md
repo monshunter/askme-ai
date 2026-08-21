@@ -27,4 +27,4 @@ Append-only; the policy changes only the current tool result and does not invali
 ## Known Limitations and Deferred Work
 
 - The plugin constrains filesystem discovery tools, not independent capabilities added to a different preset. The shipped Zhiwo preset deliberately exposes only `read`, `glob`, and `grep`.
-- A file below the workspace can still contain inaccurate or private material. Persona evidence rules and the Zhiwo publication guard separately control what may be asserted or shown.
+- Files below the workspace remain ordinary owner material: the Agent may read and show their content, while the persona evidence rules control what it may assert.
