@@ -128,13 +128,9 @@ body[data-zhiwo-ui] [data-zhiwo-sidebar-shell="wide"] > :first-child {
 }
 
 body[data-zhiwo-ui] [data-zhiwo-sidebar-shell="wide"]
-  button:has([data-zhiwo-brand-name]) span:has(> [data-slot="sidebar.brand.mark"]),
+  [data-zhiwo-brand-mark],
 body[data-zhiwo-ui] [data-zhiwo-sidebar-shell] > :first-child [role="tooltip"] {
   display: none;
-}
-
-body[data-zhiwo-ui] button:has([data-zhiwo-brand-name]) {
-  color: #20392a;
 }
 
 body[data-zhiwo-ui] [data-zhiwo-brand-name] {
@@ -146,7 +142,29 @@ body[data-zhiwo-ui] [data-zhiwo-brand-name] {
   line-height: 46px;
   font-weight: 600;
   letter-spacing: 0.05em;
+  color: #20392a;
   transform: translateY(-2px);
+}
+
+body[data-zhiwo-ui] [data-zhiwo-github] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-inline-start: 6px;
+  border-radius: 9px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+body[data-zhiwo-ui] [data-zhiwo-github]:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-zhiwo-ui] [data-zhiwo-github]:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
 }
 
 body[data-zhiwo-ui] [data-zhiwo-brand-mark] {

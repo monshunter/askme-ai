@@ -8,7 +8,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { ZhiwoBrandMark, ZhiwoBrandName } from './Brand.tsx'
+import { ZhiwoBrandMark, ZhiwoBrandName, ZhiwoGithubAction } from './Brand.tsx'
 import {
   createDocumentPreviewController,
   DocumentPreview,
@@ -241,11 +241,13 @@ export function apply(ctx: ClientContext): void {
 
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.inject('sidebar.brand.name', () =>
-      ctx.slots.inject('conversation.hero.brand.mark', () =>
-        ctx.slots.inject('conversation.hero.headline', function* () {
-          yield ctx.slots.register({ name: 'sidebar.brand.mark' }, ZhiwoBrandMark)
-          yield ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, ZhiwoBrandName)
-          yield ctx.slots.register({ name: 'conversation.hero.brand.mark' }, ZhiwoHeroMarkPlaceholder)
-          yield ctx.slots.register({ name: 'conversation.hero.headline', locale: NS }, ZhiwoGreeting)
-        }))))
+      ctx.slots.inject('sidebar.brand.action', () =>
+        ctx.slots.inject('conversation.hero.brand.mark', () =>
+          ctx.slots.inject('conversation.hero.headline', function* () {
+            yield ctx.slots.register({ name: 'sidebar.brand.mark' }, ZhiwoBrandMark)
+            yield ctx.slots.register({ name: 'sidebar.brand.name', locale: NS }, ZhiwoBrandName)
+            yield ctx.slots.register({ name: 'sidebar.brand.action', locale: NS }, ZhiwoGithubAction)
+            yield ctx.slots.register({ name: 'conversation.hero.brand.mark' }, ZhiwoHeroMarkPlaceholder)
+            yield ctx.slots.register({ name: 'conversation.hero.headline', locale: NS }, ZhiwoGreeting)
+          })))))
 }

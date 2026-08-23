@@ -8,30 +8,34 @@
 
 <a id="run-from-source"></a>
 
-## 运行
+## 从源码运行
 
-安装依赖、构建仓库，并提供 DeepSeek 凭据：
-
-```sh
-pnpm install
-pnpm run build
-export DEEPSEEK_API_KEY=your_key
-```
-
-用知我AI Patch 启动原生 Web Profile：
+先创建一次已被 Git 忽略的项目环境文件，然后安装并构建：
 
 ```sh
-DSH_HOME=.artifacts/zhiwo ZHIWO_WORKSPACE_ROOT=userdata \
-  pnpm dsh web --patch packages/zhiwo/product/cordis.patch.yml
+cp .env.example .env
+make zhiwo-install
+make zhiwo-build
+make zhiwo-run
 ```
 
-打开 `dsh web` 输出的 URL。快捷命令 `pnpm run zhiwo:demo` 执行同一条启动命令。测试时可让 `ZHIWO_WORKSPACE_ROOT` 指向其他目录，但产品默认值是 `userdata`。
+打开 `dsh web` 输出的 URL。Makefile 是知我AI命令入口；运行 `make help` 可查看源码运行、测试、构建和 Docker 生命周期目标。源码与 Docker 启动都要求项目本地 `.env`，因此都不依赖启动 Shell 导出的凭据或用户 Home 下的环境文件。`make zhiwo-run USERDATA_DIR=/absolute/materials DSH_HOME_DIR=/absolute/state ZHIWO_PORT=19000` 可以覆盖三个本地路径与端口。已有的 `pnpm run zhiwo:demo` 快捷命令继续使用 `userdata/`、`.artifacts/zhiwo` 和端口 `18000` 作为默认值。
+
+## 使用 Docker 运行
+
+使用同一份项目 `.env` 启动持久服务：
+
+```sh
+make zhiwo-docker-up
+```
+
+`make zhiwo-docker-package` 会把已部署的 CLI、前端、原生 Launcher 和完整生产插件依赖闭包打包进 `zhiwo-ai:local`；生成的应用镜像不包含源码 Checkout、主机 `node_modules`、凭据或用户资料。`userdata` 始终是运行时输入，绝不会复制进镜像层。`make zhiwo-docker-deploy` 部署已有镜像，`make zhiwo-docker-up` 则连续完成两个阶段。Compose 在容器启动时注入 `.env`，要求把所选资料目录只读挂载到 `/data/userdata`，等待健康检查，在 `http://127.0.0.1:18000` 提供服务，并把原生 DSH Session、身份、Workspace 元数据和问题缓存保存在命名卷 `zhiwo-state` 中。挂载目录默认是仓库本地 `userdata/`；设置主机环境变量 `ZHIWO_USERDATA=/absolute/materials`，或向部署目标传入 `USERDATA_DIR=/absolute/materials`，即可在不重建镜像的情况下选择另一个已有目录。使用 `ZHIWO_PORT=19000` 可改用其他回环端口。`make zhiwo-docker-status`、`make zhiwo-docker-logs` 与 `make zhiwo-docker-restart` 用于运维服务；`make zhiwo-docker-down` 会停止服务，但不会删除状态卷。
 
 ## 行为
 
 启动覆盖层通过原生 Workspace Registry 注册配置目录，原生浏览器会自动把初始 Session 连接到该 Workspace。浏览器只向用户展示会话，不显示 Workspace 名称、分组、搜索、新建、设置或选择器。随仓库交付的 `zhiwo` Agent Preset 只暴露维护中的 `read`、`glob` 与 `grep` 工具。模型工具目录中不存在文件写入、Shell、Web Search、Skill、Plan、Goal、Workflow、Job 或 Subagent。
 
-浏览器保留原生的会话、流式输出、历史、模型选择和 Session 行为。一个小型客户端插件在中文界面显示“知我AI”，在英文界面显示“AskmeAI”，以第一人称指代资料所有者，并用邀请访客了解所有者的本地化问候语替换通用预览标题，同时提供侧边栏语言切换。知我AI 界面不显示 Workspace 控件、Session Log 下载、命令／访问模式控件组、上下文用量圆环或统计行。
+浏览器保留原生的会话、流式输出、历史、模型选择和 Session 行为。一个小型客户端插件在中文界面显示“知我AI”，在英文界面显示“AskmeAI”，以第一人称指代资料所有者，用邀请访客了解所有者的本地化问候语替换通用预览标题，在展开侧边栏的品牌文字旁放置 GitHub 源码链接，并提供侧边栏语言切换。知我AI 界面不显示 Workspace 控件、Session Log 下载、命令／访问模式控件组、上下文用量圆环或统计行。
 
 每个浏览器 Profile 会获得一个匿名签名身份。知我AI 用该身份限定原生 Session ID、Session 列表、直接 Session 操作、Workspace 投影与两条事件流。一个浏览器无法读取、修改或接收另一个浏览器的对话。所有访问者会刻意读取同一个只读 `userdata/` Workspace；隔离对象是对话，而不是资料源。
 

@@ -1,0 +1,32 @@
+services:
+  zhiwo:
+    image: ${ZHIWO_IMAGE:-zhiwo-ai:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DSH_CLIENT_COMMIT_HASH: ${DSH_CLIENT_COMMIT_HASH:-0000000}
+    init: true
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      DSH_TELEMETRY_DISABLED: "1"
+      ZHIWO_LISTEN_HOST: 0.0.0.0
+      ZHIWO_LISTEN_PORT: "18000"
+      ZHIWO_WORKSPACE_ROOT: /data/userdata
+    ports:
+      - "127.0.0.1:${ZHIWO_PORT:-18000}:18000"
+    volumes:
+      - type: bind
+        source: ${ZHIWO_USERDATA:-./userdata}
+        target: /data/userdata
+        read_only: true
+      - type: volume
+        source: zhiwo-state
+        target: /data/dsh
+    stop_grace_period: 30s
+
+volumes:
+  zhiwo-state:

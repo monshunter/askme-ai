@@ -3,6 +3,7 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
   'brand.name': '知我AI',
+  'brand.github': '在 GitHub 查看知我AI',
   'hero.greeting': '你好，欢迎来了解我',
   'history.aria': '历史会话',
   'history.heading': '历史会话',
@@ -51,6 +52,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 /** English dictionary, checked complete against the Chinese key set. */
 export const en = {
   'brand.name': 'AskmeAI',
+  'brand.github': 'View AskmeAI on GitHub',
   'hero.greeting': 'Hi, get to know me here',
   'history.aria': 'Session history',
   'history.heading': 'History',

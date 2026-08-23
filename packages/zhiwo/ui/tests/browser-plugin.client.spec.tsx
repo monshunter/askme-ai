@@ -5,7 +5,12 @@ import type { ComponentProps } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { ZhiwoBrandMark, ZhiwoBrandName } from '../src/client/Brand.tsx'
+import {
+  ZHIWO_REPOSITORY_URL,
+  ZhiwoBrandMark,
+  ZhiwoBrandName,
+  ZhiwoGithubAction,
+} from '../src/client/Brand.tsx'
 import {
   DocumentPreview,
   type DocumentPreviewInjected,
@@ -24,6 +29,7 @@ afterEach(() => { cleanup() })
 const HOLES = [
   'sidebar.brand.mark',
   'sidebar.brand.name',
+  'sidebar.brand.action',
   'sidebar.workspaces',
   'sidebar.footer.action',
   'conversation.hero.brand.mark',
@@ -67,7 +73,10 @@ async function bench(clean = false) {
     baselinesReady: true,
     items: [{ workspaceId: 'userdata' }],
   }
-  const sessionState = { current: clean ? undefined : 'existing' }
+  const sessionState = {
+    current: clean ? undefined : 'existing',
+    byId: clean ? {} : { existing: { blank: false } },
+  }
   const connectWorkspace = vi.fn(() => Promise.resolve('zhiwo-session'))
   const open = vi.fn()
   const remove = vi.fn(() => Promise.resolve())
@@ -380,6 +389,16 @@ describe('Zhiwo browser shell', () => {
     const englishName = { t: () => 'AskmeAI' } as unknown as ComponentProps<typeof ZhiwoBrandName>
     expect(render(<ZhiwoBrandName {...chineseName} />).getByText('知我AI')).toBeTruthy()
     expect(render(<ZhiwoBrandName {...englishName} />).getByText('AskmeAI')).toBeTruthy()
+
+    const githubProps = {
+      t: () => '在 GitHub 查看知我AI',
+    } as unknown as ComponentProps<typeof ZhiwoGithubAction>
+    const github = render(<ZhiwoGithubAction {...githubProps} />).getByRole('link', {
+      name: '在 GitHub 查看知我AI',
+    })
+    expect(github.getAttribute('href')).toBe(ZHIWO_REPOSITORY_URL)
+    expect(github.getAttribute('target')).toBe('_blank')
+    expect(github.getAttribute('rel')).toBe('noopener noreferrer')
   })
 
   it('suppresses the native hero row because the input dock owns the introduction', () => {

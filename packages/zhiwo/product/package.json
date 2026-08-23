@@ -40,13 +40,13 @@
     "lib/index.js",
     "lib/invariant.js",
     "cordis.patch.yml",
+    "assets/*.png",
     "lib/types/**/*.js",
     "lib/types/**/*.d.ts",
     "lib/typert.host.js",
     "lib/typert.host.d.ts",
     "lib/typert.remote-client.js",
-    "lib/typert.remote-client.d.ts",
-    "assets/*.png"
+    "lib/typert.remote-client.d.ts"
   ],
   "scripts": {
     "build": "tsc -b tsconfig.json && tsdown",

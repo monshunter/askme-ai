@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/zhiwo.md
-zhiwo.md: 20b97d3ed5ea84f7d276cadced72d20bf7f2a5c0
-zhiwo.zh.md: 3a505f2014b244c13c59d11b2bc61dedd0485523
+zhiwo.md: 07689f8f72164ebd4d5abb2e524790e03c2c2f08
+zhiwo.zh.md: e26b29887d2761a6b7549b26cdd9b3398ee7e8a3

@@ -6,28 +6,51 @@ This tutorial starts the AskmeAI composition on the native DSH Web application a
 
 ## Prerequisites
 
-Use a supported Node.js release, install pnpm dependencies, build the repository, and set `DEEPSEEK_API_KEY`. Place model-readable text anywhere below `userdata/`.
+Use a supported Node.js release and put `DEEPSEEK_API_KEY` in the gitignored project `.env`. Place model-readable text anywhere below `userdata/`.
 
 ```sh
-pnpm install
-pnpm run build
-export DEEPSEEK_API_KEY=your_key
+cp .env.example .env
+make zhiwo-install
+make zhiwo-build
 ```
+
+The Make targets validate this file before starting either runtime. The source target clears inherited DeepSeek provider variables before Node preloads the project file, and Compose injects the same file into the container, so these supported paths do not require or prefer an exported shell variable or `~/.env`. Keep `.env` local; the Docker build excludes it from every image layer.
 
 ## Start AskmeAI
 
-Run the ordinary Web command with the AskmeAI patch:
+Start the ordinary Web application with the AskmeAI patch:
 
 ```sh
-DSH_HOME=.artifacts/zhiwo ZHIWO_WORKSPACE_ROOT=userdata \
-  pnpm dsh web --patch packages/zhiwo/product/cordis.patch.yml
+make zhiwo-run
 ```
 
-Open the URL printed by the command. The client connects the initial native Session to the registered `userdata/` Workspace; no directory selection or import step is required. Workspace names, groups, search, creation, settings, and pickers are not rendered in AskmeAI. Session-log download, command/access-mode controls, the context meter, and the statistics strip are also absent; model selection and sending remain available. Use the language action at the bottom of the sidebar to switch the whole interface and the Session history between Chinese and English. The sidebar name is `AskmeAI` in English and `知我AI` in Chinese; the blank-session headline invites a visitor with `Hi, get to know me here` or `你好，欢迎来了解我`, with no preview badge. Visitors see only their conversations. `pnpm run zhiwo:demo` is a shortcut for the same command.
+Open the URL printed by the command. The client connects the initial native Session to the registered `userdata/` Workspace; no directory selection or import step is required. Workspace names, groups, search, creation, settings, and pickers are not rendered in AskmeAI. Session-log download, command/access-mode controls, the context meter, and the statistics strip are also absent; model selection and sending remain available. Use the language action at the bottom of the sidebar to switch the whole interface and the Session history between Chinese and English. The sidebar name is `AskmeAI` in English and `知我AI` in Chinese; its adjacent GitHub icon opens the AskmeAI repository in a new tab. The blank-session headline invites a visitor with `Hi, get to know me here` or `你好，欢迎来了解我`, with no preview badge. Visitors see only their conversations. `pnpm run zhiwo:demo` remains a shortcut with the default paths.
 
-The default URL is `http://127.0.0.1:18000`. Set `ZHIWO_LISTEN_PORT` for a stable deployment override, or pass `--port` for one invocation; the explicit flag wins. AskmeAI fails when the selected port is invalid or occupied and never chooses a random fallback.
+The default URL is `http://127.0.0.1:18000`. Use `make zhiwo-run USERDATA_DIR=/absolute/materials DSH_HOME_DIR=/absolute/state ZHIWO_PORT=19000` to override the Workspace, state directory, or port. The underlying patch resolves an explicit `--port` before `ZHIWO_LISTEN_PORT`; AskmeAI fails when the selected port is invalid or occupied and never chooses a random fallback.
 
 Each browser profile receives an anonymous identity. Its native Session history is private to that profile, while every visitor reads the same read-only `userdata/` Workspace.
+
+## Run a persistent Docker service
+
+Docker Compose keeps the application running with `restart: unless-stopped` and waits for the Web health check during startup:
+
+```sh
+make zhiwo-docker-package
+make zhiwo-docker-deploy
+make zhiwo-docker-status
+```
+
+The package stage injects every Workspace package into a production deployment and rejects broken package links. The resulting `zhiwo-ai:local` contains the CLI, frontend, native launcher, and complete production plugin dependency closure; it contains no source checkout, Host `node_modules`, credentials, or `userdata`. User material is required runtime input rather than an image asset. `make zhiwo-docker-up` is the one-command package-and-deploy form. Compose bind-mounts the selected existing directory at `/data/userdata`, read-only. Native DSH state lives separately in the named `zhiwo-state` volume at `/data/dsh`; rebuilding, restarting, or running `make zhiwo-docker-down` does not delete that volume. Do not use `docker compose down --volumes` when this state must be preserved.
+
+Choose another existing data directory or host port with Make variables:
+
+```sh
+ZHIWO_USERDATA=/absolute/materials make zhiwo-docker-deploy ZHIWO_PORT=19000
+# Equivalent Make-variable form:
+make zhiwo-docker-deploy USERDATA_DIR=/absolute/materials ZHIWO_PORT=19000
+```
+
+The container listens on all of its own interfaces, but Compose publishes it only on the Host loopback address. Use a separate authenticated reverse proxy with TLS, traffic controls, and an explicit exposure decision before serving AskmeAI beyond the local machine. `make help` lists the build, start, stop, restart, log, status, configuration, source, and test targets.
 
 ## Ask questions
 

@@ -4,14 +4,16 @@
 
 这个包是原生 `dsh web` Profile 上的一层薄知我AI Overlay。知我AI 是资料所有者面向访客的个人 Agent，基于资料代表所有者回答；`zhiwo` 仍是内部包与 Preset ID。它不拥有独立的 Agent Loop、API Server、数据库、浏览器应用、知识编译器、生成知识语料或 Revision 格式，但拥有下文所述的有界派生问题目录。
 
-Host 插件解析 `ZHIWO_WORKSPACE_ROOT`（默认 `userdata`）并把它交给原生 DSH Workspace Registry；后者负责规范化与目录校验。Bundle Patch 只选择内置 `zhiwo` Agent Preset、只读 Sandbox Mode、知我AI 品牌插件和精简后的浏览器插件清单。通用 Workspace UI 与 Session Log 下载插件不会加载；知我AI Client 只投影当前访问者的原生 Session，把干净浏览器自动连接到唯一 Workspace，隐藏不需要的输入区诊断控件，用本地化的知我AI 问候语替换通用预览标题，并在侧边栏提供直接的中英文切换。启动仍然走普通命令：
+Host 插件解析 `ZHIWO_WORKSPACE_ROOT`（默认 `userdata`）并把它交给原生 DSH Workspace Registry；后者负责规范化与目录校验。Bundle Patch 只选择内置 `zhiwo` Agent Preset、只读 Sandbox Mode、知我AI 品牌插件和精简后的浏览器插件清单。通用 Workspace UI 与 Session Log 下载插件不会加载；知我AI Client 只投影当前访问者的原生 Session，把干净浏览器自动连接到唯一 Workspace，隐藏不需要的输入区诊断控件，用本地化的知我AI 问候语替换通用预览标题，在展开后的品牌文字旁提供 GitHub 源码操作，并在侧边栏提供直接的中英文切换。启动仍然走普通命令，仓库根目录通过 `make zhiwo-run` 暴露该命令：
 
 ```sh
 DSH_HOME=.artifacts/zhiwo pnpm dsh web \
   --patch packages/zhiwo/product/cordis.patch.yml
 ```
 
-Patch 后的 Web Server 默认绑定 `127.0.0.1:18000`。单次启动时显式 `--port` 优先；否则 `ZHIWO_LISTEN_PORT` 可以覆盖 `18000`。端口无效或被占用时启动直接失败，不会选择随机端口。
+Patch 后的 Web Server 默认绑定 `127.0.0.1:18000`。显式启动 Host 优先，其次是 `ZHIWO_LISTEN_HOST`，最后才是回环默认值；Docker 只在自身网络命名空间中使用环境变量覆盖，并把容器端口发布到主机回环地址。单次启动时显式 `--port` 优先；否则 `ZHIWO_LISTEN_PORT` 可以覆盖 `18000`。端口无效或被占用时启动直接失败，不会选择随机端口。
+
+根目录 Dockerfile 把构建后的 `@deepseek-ai/dsh` 生产依赖闭包与该 Patch 注入 Node 24 Runtime 镜像，不会复制用户资料。镜像不会从源码 Checkout 解析代码或数据，并且要求在运行时挂载 `userdata`。Compose 以只读 Mount 语义把所选已有目录绑定到 `/data/userdata`；它还会把命名卷 `zhiwo-state` 挂载到 `/data/dsh`，只发布 `127.0.0.1:${ZHIWO_PORT}:18000`，提供应用健康检查，并使用 `restart: unless-stopped`。主机环境变量 `ZHIWO_USERDATA` 或 Make 变量 `USERDATA_DIR` 用于选择资料目录；`ZHIWO_PORT` 与 `ZHIWO_IMAGE` 是 Make 变量。`make zhiwo-docker-package` 与 `make zhiwo-docker-deploy` 分别暴露镜像和部署阶段，`make zhiwo-docker-up` 则连续完成两者。重建镜像或执行 `docker compose down` 都会保留命名状态卷。
 
 `zhiwo` Preset 告诉模型，它是资料所有者面向访客的个人 Agent。回答中的第一人称指资料所有者，不能指 Agent 或访客；测试 Fixture 与示例也不能在缺少所有者正式资料确认时成为所有者事实。该 Preset 使用维护中的文件系统 Consumer，并把 `mutations` 设为 `false`，同时挂载维护中的文件搜索 Consumer，因此模型只会看到 `read`、`glob` 和 `grep`。[`zhiwo-agent-policy`](../agent-policy/README.md) 插件通过文件系统 Provider 解析每个读取或搜索根，并要求其规范目标仍位于 Session `cwd` 下；绝对路径、`..` 穿越和指向外部目标的符号链接会在读取或启动搜索进程前失败。成功的 read 值只暴露规范化相对路径。文件仍从 `userdata/` 实时读取；修改原文件后，后续 Turn 无需同步即可检索到新内容。
 
@@ -23,7 +25,7 @@ Host 插件还会在原生 Connection Transport 外安装一条访问策略。�
 
 应用启动时还会异步安排一次清单扫描，读取 Workspace 下符合条件的直接子目录与普通文档元数据，用名称、类型、大小和修改时间生成指纹，不读取文档正文。指纹命中 `DSH_HOME` 下带版本的私有缓存时，直接发布其中的 100 个双语语义问题对，不重新构建或重写；目录或文档变化时重新构建并原子替换缓存。存在项目时为 50 个全局问题对加 50 个项目问题对，否则为 100 个全局问题对。内部 `zhiwo/questions` Remote 复用现有 Typert Gateway 与 Visitor Session 校验。问候页响应包含四个轮换目录问题。每个 Turn 完成后，Product 会把截至该 Turn 的有界对话发给同一次回答使用的 Provider 和 Model Route，要求模型实时生成严格两个双语上下文问题，再与初始化全局池中的两个问题组合。自动更新与“换一组”走同一条实时生成路径。分发前写入的 `zhiwo/question-llm-request` 事件记录确切 Route、System Prompt、Messages、Turn Identity 与输出 Token 上限；`questionModelMaxInputBytes` 和 `questionModelMaxOutputTokens` 分别配置两项上限。生成失败或格式无效时会明确返回错误，不会用确定性上下文模板替代，因此 Client 可以保留原来的四个问题。
 
-Host 在返回知我AI页面前改写初始 Document Title 与 Favicon，并用“知我AI”元数据替换通用安装 Manifest 与图标资源。它通过固定的同源 `/assets/zhiwo/*` 路由提供随包交付的 AskmeAI Logo 与一张全页面共用水墨背景。Client 在浏览器、安装与问候区使用同一个 Logo；展开后的侧栏只显示本地化品牌文字，不显示 Logo。空白和已有标题标签都只在该 Logo 旁显示“AskmeAI | 知我AI”。访问策略只会在通过与其他 Session 操作相同的访问者 Session Ownership 与 Preset 校验后，才允许调用原生消息反馈方法。
+Host 在返回知我AI页面前改写初始 Document Title 与 Favicon，并用“知我AI”元数据替换通用安装 Manifest 与图标资源。它通过固定的同源 `/assets/zhiwo/*` 路由提供随包交付的 AskmeAI Logo 与一张全页面共用水墨背景。Client 在浏览器、安装与问候区使用同一个 Logo；展开后的侧栏显示不带 Logo 的本地化品牌文字，并在旁边放置链接到 `https://github.com/monshunter/askme-ai` 的 GitHub 图标。空白和已有标题标签都只在该 Logo 旁显示“AskmeAI | 知我AI”。访问策略只会在通过与其他 Session 操作相同的访问者 Session Ownership 与 Preset 校验后，才允许调用原生消息反馈方法。
 
 ## Model Experience
 

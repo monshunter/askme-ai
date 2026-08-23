@@ -109,19 +109,27 @@
 
 /* Brand group (figma I133:7632): the full wordmark rides the text ink
    (figma flows: the main-screen instance is black; blue is brand
-   emphasis only). A button only in behavior (New Session shortcut): the
-   pointer cursor is the sole affordance — no hover chrome on the mark. */
-.brand {
+   emphasis only). Identity is static; the adjacent action remains an
+   independent interaction. */
+.brandCluster {
   flex: 1;
   min-width: 0;
   display: inline-flex;
   align-items: center;
   overflow: hidden;
-  padding: 0;
-  border: none;
-  background: transparent;
+}
+
+.brand {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
   color: inherit;
-  cursor: pointer;
+}
+
+.brandAction {
+  display: contents;
 }
 
 /* Mark and name are independent slots; the shell owns their shared baseline,

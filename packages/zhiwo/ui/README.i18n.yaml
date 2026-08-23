@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/zhiwo/ui/README.md
-README.md: 971ede05d1e1726b8f4f500bbcb0e6dd0f3c40fe
-README.zh.md: f3d9e4973e2c92e7e58401f385d5a1fff9e0d489
+README.md: b7a7fd260da9e5fdd9c368e86c043bf8fb3c2c53
+README.zh.md: 37c8dd5bef7257e1cb6c8a53474368996fcd8b7d

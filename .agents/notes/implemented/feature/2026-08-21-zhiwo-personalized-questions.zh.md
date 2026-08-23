@@ -22,9 +22,9 @@ Product 在现有 Connection `/api` Channel 上注册一个内部 `zhiwo/questio
 
 `packages/zhiwo/ui` 使用现有 `conversation.input.dock` List Seat 渲染提示问题面板。空白 Session 请求问候问题，新完成的 Turn 请求后续问题。点击问题只把它写入原生 Composer Draft，是否发送仍由用户明确决定。两个阶段都提供刷新按钮。每个 Session 与 Locale 同时最多有一个请求，按钮会显示加载状态；更新失败、取消、中断或响应格式错误时，界面保留原来的四个问题并显示可重试提示。浏览器会验证每个响应；后续响应的 Source Tag 不能证明严格二加二时必须拒绝。
 
-知我AI还会拦截原生 Conversation Placeholder 扩展点。中文可见消息输入框使用“问问我的经历、项目、能力或计划”，英文使用“Ask about my experience, projects, strengths, or plans”，其中第一人称指被代表的资料所有者。空白会话问候语同样邀请访客了解所有者，不会把 Agent 介绍成独立主体。其他通用 Web Profile 继续使用原文案。知我AI Patch 按显式 `--port`、`ZHIWO_LISTEN_PORT`、`18000` 的顺序解析 Web 端口，绑定地址保持 `127.0.0.1`。无效或已占用端口在启动时直接失败，绝不回退到操作系统随机端口。
+知我AI还会拦截原生 Conversation Placeholder 扩展点。中文可见消息输入框使用“问问我的经历、项目、能力或计划”，英文使用“Ask about my experience, projects, strengths, or plans”，其中第一人称指被代表的资料所有者。空白会话问候语同样邀请访客了解所有者，不会把 Agent 介绍成独立主体。其他通用 Web Profile 继续使用原文案。知我AI Patch 按显式 `--port`、`ZHIWO_LISTEN_PORT`、`18000` 的顺序解析 Web 端口，并按显式启动值、`ZHIWO_LISTEN_HOST`、`127.0.0.1` 的顺序解析绑定地址。随仓库交付的 Docker 组合只在容器内部使用 Host 覆盖，并把端口发布到主机回环地址。无效或已占用端口在启动时直接失败，绝不回退到操作系统随机端口。
 
-知我AI 同时拥有浏览器 Document 品牌。Host 在返回页面前替换初始构建标题、通用鱼形 Favicon、安装 Manifest 及其图标；Client 通过 Product Title Waterfall 提供“知我AI”，并通过 Document Title Waterfall 提供“AskmeAI | 知我AI”，让空白会话和已有标题会话在 React 挂载后都只显示这一双语标签页文案。图标使用应用外壳同款圆角“知”标记；通用 Web Profile 继续保留构建时选择的标题、图标与安装元数据。
+知我AI 同时拥有浏览器 Document 品牌。Host 在返回页面前替换初始构建标题、通用鱼形 Favicon、安装 Manifest 及其图标；Client 通过 Product Title Waterfall 提供“知我AI”，并通过 Document Title Waterfall 提供“AskmeAI | 知我AI”，让空白会话和已有标题会话在 React 挂载后都只显示这一双语标签页文案。图标使用应用外壳同款圆角“知”标记；展开后的侧边栏还会把产品仓库操作紧接在品牌文字之后。通用 Web Profile 继续保留构建时选择的标题、图标与安装元数据。
 
 ## 隐私与生命周期
 

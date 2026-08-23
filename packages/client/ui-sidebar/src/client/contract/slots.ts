@@ -27,6 +27,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'sidebar.brand.name': { kind: 'single'; scope: 'root'; owner: SidebarBrandNameOwnerProps }
     /**
+     * Optional action rendered immediately after the expanded brand identity.
+     * The shell keeps it outside the New Session button so registrants may
+     * supply an independent link or control without nested interactions.
+     */
+    'sidebar.brand.action': { kind: 'single'; scope: 'root'; owner: SidebarBrandActionOwnerProps }
+    /**
      * The workspace/session browsing region: section header, search, the
      * grouped/flat session list, and every workspace dialog. Declared by this
      * package's 'sidebar' entry (declaring is claiming); ui-workspace
@@ -56,6 +62,12 @@ export interface SidebarBrandMarkOwnerProps {
 /** Empty owner share for the sidebar brand-name occupant. */
 export interface SidebarBrandNameOwnerProps {
   /** Marker field: the occupant owns its own content and width. */
+  children?: never
+}
+
+/** Empty owner share for the expanded sidebar brand action. */
+export interface SidebarBrandActionOwnerProps {
+  /** Marker field: the occupant owns its own interaction and accessible name. */
   children?: never
 }
 
@@ -111,6 +123,7 @@ export type SidebarRootComponentProps =
   & PropsRenderSlots<
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
+    | 'sidebar.brand.action'
     | 'sidebar.workspaces'
     | 'sidebar.settings'
     | 'sidebar.footer.action'

@@ -31,7 +31,7 @@
 # random port; the Web Server rejects invalid or occupied values at load/bind.
 - id: webserver
   config:
-    host: !!js ctx.webStartup.host ?? '127.0.0.1'
+    host: !!js ctx.webStartup.host ?? process.env.ZHIWO_LISTEN_HOST ?? '127.0.0.1'
     port: !!js ctx.webStartup.port ?? Number(process.env.ZHIWO_LISTEN_PORT ?? '18000')
 
 - id: agent-presets
