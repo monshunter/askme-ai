@@ -35,12 +35,14 @@ Each browser profile receives an anonymous identity. Its native Session history 
 Docker Compose keeps the application running with `restart: unless-stopped` and waits for the Web health check during startup:
 
 ```sh
+# Set this deployment's browser-facing host or host:port in .env first.
+# ZHIWO_TRUSTED_HOST=askme.example
 make zhiwo-docker-package
 make zhiwo-docker-deploy
 make zhiwo-docker-status
 ```
 
-The package stage injects every Workspace package into a production deployment and rejects broken package links. The resulting `zhiwo-ai:local` contains the CLI, frontend, native launcher, and complete production plugin dependency closure; it contains no source checkout, Host `node_modules`, credentials, or `userdata`. User material is required runtime input rather than an image asset. `make zhiwo-docker-up` is the one-command package-and-deploy form. Compose bind-mounts the selected existing directory at `/data/userdata`, read-only. Native DSH state lives separately in the named `zhiwo-state` volume at `/data/dsh`; rebuilding, restarting, or running `make zhiwo-docker-down` does not delete that volume. Do not use `docker compose down --volumes` when this state must be preserved.
+The package stage injects every Workspace package into a production deployment and rejects broken package links. The resulting `zhiwo-ai:local` contains the CLI, frontend, native launcher, and complete production plugin dependency closure; it contains no source checkout, Host `node_modules`, credentials, or `userdata`. User material is required runtime input rather than an image asset. `make zhiwo-docker-up` is the one-command package-and-deploy form. Compose bind-mounts the selected existing directory at `/data/userdata`, read-only. `ZHIWO_TRUSTED_HOST` has no scheme and belongs to this deployment rather than the reusable Compose file; the application rejects other public Host authorities and malformed configured values. Native DSH state lives separately in the named `zhiwo-state` volume at `/data/dsh`; rebuilding, restarting, or running `make zhiwo-docker-down` does not delete that volume. Do not use `docker compose down --volumes` when this state must be preserved.
 
 Choose another existing data directory or host port with Make variables:
 
@@ -50,7 +52,7 @@ ZHIWO_USERDATA=/absolute/materials make zhiwo-docker-deploy ZHIWO_PORT=19000
 make zhiwo-docker-deploy USERDATA_DIR=/absolute/materials ZHIWO_PORT=19000
 ```
 
-The container listens on all of its own interfaces, but Compose publishes it only on the Host loopback address. Use a separate authenticated reverse proxy with TLS, traffic controls, and an explicit exposure decision before serving AskmeAI beyond the local machine. `make help` lists the build, start, stop, restart, log, status, configuration, source, and test targets.
+The container and published Host port listen on `0.0.0.0`. Use a separate authenticated reverse proxy with TLS and traffic controls before exposing AskmeAI publicly. `make help` lists the build, start, stop, restart, log, status, configuration, source, and test targets.
 
 ## Ask questions
 

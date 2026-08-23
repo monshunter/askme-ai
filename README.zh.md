@@ -29,7 +29,7 @@ make zhiwo-run
 make zhiwo-docker-up
 ```
 
-`make zhiwo-docker-package` 会把已部署的 CLI、前端、原生 Launcher 和完整生产插件依赖闭包打包进 `zhiwo-ai:local`；生成的应用镜像不包含源码 Checkout、主机 `node_modules`、凭据或用户资料。`userdata` 始终是运行时输入，绝不会复制进镜像层。`make zhiwo-docker-deploy` 部署已有镜像，`make zhiwo-docker-up` 则连续完成两个阶段。Compose 在容器启动时注入 `.env`，要求把所选资料目录只读挂载到 `/data/userdata`，等待健康检查，在 `http://127.0.0.1:18000` 提供服务，并把原生 DSH Session、身份、Workspace 元数据和问题缓存保存在命名卷 `zhiwo-state` 中。挂载目录默认是仓库本地 `userdata/`；设置主机环境变量 `ZHIWO_USERDATA=/absolute/materials`，或向部署目标传入 `USERDATA_DIR=/absolute/materials`，即可在不重建镜像的情况下选择另一个已有目录。使用 `ZHIWO_PORT=19000` 可改用其他回环端口。`make zhiwo-docker-status`、`make zhiwo-docker-logs` 与 `make zhiwo-docker-restart` 用于运维服务；`make zhiwo-docker-down` 会停止服务，但不会删除状态卷。
+`make zhiwo-docker-package` 会把已部署的 CLI、前端、原生 Launcher 和完整生产插件依赖闭包打包进 `zhiwo-ai:local`；生成的应用镜像不包含源码 Checkout、主机 `node_modules`、凭据或用户资料。`userdata` 始终是运行时输入，绝不会复制进镜像层。`make zhiwo-docker-deploy` 部署已有镜像，`make zhiwo-docker-up` 则连续完成两个阶段。Compose 在容器启动时注入 `.env`，要求把所选资料目录只读挂载到 `/data/userdata`，等待健康检查，发布 `0.0.0.0:18000`，并把原生 DSH Session、身份、Workspace 元数据和问题缓存保存在命名卷 `zhiwo-state` 中。在 `.env` 中把 `ZHIWO_TRUSTED_HOST` 设为该部署供浏览器访问的 `host` 或 `host:port`；Compose 会把它传给 API Host／Origin 检查，不会让可复用配置绑定某个域名。资料挂载目录默认是仓库本地 `userdata/`；设置主机环境变量 `ZHIWO_USERDATA=/absolute/materials`，或向部署目标传入 `USERDATA_DIR=/absolute/materials`，即可在不重建镜像的情况下选择另一个已有目录。使用 `ZHIWO_PORT=19000` 可改用其他端口。`make zhiwo-docker-status`、`make zhiwo-docker-logs` 与 `make zhiwo-docker-restart` 用于运维服务；`make zhiwo-docker-down` 会停止服务，但不会删除状态卷。
 
 ## 行为
 

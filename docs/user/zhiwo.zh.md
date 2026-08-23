@@ -35,12 +35,14 @@ make zhiwo-run
 Docker Compose 通过 `restart: unless-stopped` 保持应用运行，并在启动时等待 Web 健康检查：
 
 ```sh
+# Set this deployment's browser-facing host or host:port in .env first.
+# ZHIWO_TRUSTED_HOST=askme.example
 make zhiwo-docker-package
 make zhiwo-docker-deploy
 make zhiwo-docker-status
 ```
 
-打包阶段会把每个 Workspace Package 注入生产部署，并拒绝断开的 Package Link。生成的 `zhiwo-ai:local` 包含 CLI、前端、原生 Launcher 和完整生产插件依赖闭包；它不包含源码 Checkout、主机 `node_modules`、凭据或 `userdata`。用户资料是必需的运行时输入，不是镜像资产。`make zhiwo-docker-up` 是一次完成打包与部署的入口。Compose 会把所选已有目录只读挂载到 `/data/userdata`。原生 DSH 状态单独保存在 `/data/dsh` 的命名卷 `zhiwo-state` 中；重建、重启或运行 `make zhiwo-docker-down` 都不会删除这个卷。需要保留状态时，不要使用 `docker compose down --volumes`。
+打包阶段会把每个 Workspace Package 注入生产部署，并拒绝断开的 Package Link。生成的 `zhiwo-ai:local` 包含 CLI、前端、原生 Launcher 和完整生产插件依赖闭包；它不包含源码 Checkout、主机 `node_modules`、凭据或 `userdata`。用户资料是必需的运行时输入，不是镜像资产。`make zhiwo-docker-up` 是一次完成打包与部署的入口。Compose 会把所选已有目录只读挂载到 `/data/userdata`。`ZHIWO_TRUSTED_HOST` 不带 Scheme，属于当前部署而不是可复用 Compose 文件；应用会拒绝其他公网 Host Authority 和格式错误的配置值。原生 DSH 状态单独保存在 `/data/dsh` 的命名卷 `zhiwo-state` 中；重建、重启或运行 `make zhiwo-docker-down` 都不会删除这个卷。需要保留状态时，不要使用 `docker compose down --volumes`。
 
 通过 Make 变量选择另一个已有资料目录或主机端口：
 
@@ -50,7 +52,7 @@ ZHIWO_USERDATA=/absolute/materials make zhiwo-docker-deploy ZHIWO_PORT=19000
 make zhiwo-docker-deploy USERDATA_DIR=/absolute/materials ZHIWO_PORT=19000
 ```
 
-容器会监听其内部所有网络接口，但 Compose 只发布到主机的回环地址。向本机以外提供知我AI前，应另行配置带身份验证、TLS 与流量控制的反向代理，并明确决定暴露范围。`make help` 会列出构建、启动、停止、重启、日志、状态、配置、源码运行和测试目标。
+容器和主机发布端口都会监听 `0.0.0.0`。向公网提供知我AI前，应另行配置带身份验证、TLS 与流量控制的反向代理。`make help` 会列出构建、启动、停止、重启、日志、状态、配置、源码运行和测试目标。
 
 ## 提问
 

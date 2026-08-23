@@ -11,9 +11,9 @@ DSH_HOME=.artifacts/zhiwo pnpm dsh web \
   --patch packages/zhiwo/product/cordis.patch.yml
 ```
 
-Patch 后的 Web Server 默认绑定 `127.0.0.1:18000`。显式启动 Host 优先，其次是 `ZHIWO_LISTEN_HOST`，最后才是回环默认值；Docker 只在自身网络命名空间中使用环境变量覆盖，并把容器端口发布到主机回环地址。单次启动时显式 `--port` 优先；否则 `ZHIWO_LISTEN_PORT` 可以覆盖 `18000`。端口无效或被占用时启动直接失败，不会选择随机端口。
+Patch 后的 Web Server 默认绑定 `127.0.0.1:18000`。显式启动 Host 优先，其次是 `ZHIWO_LISTEN_HOST`，最后才是回环默认值；Docker 会把容器内监听地址设为 `0.0.0.0`，并在主机所有接口发布所选端口。单次启动时显式 `--port` 优先；否则 `ZHIWO_LISTEN_PORT` 可以覆盖 `18000`。端口无效或被占用时启动直接失败，不会选择随机端口。
 
-根目录 Dockerfile 把构建后的 `@deepseek-ai/dsh` 生产依赖闭包与该 Patch 注入 Node 24 Runtime 镜像，不会复制用户资料。镜像不会从源码 Checkout 解析代码或数据，并且要求在运行时挂载 `userdata`。Compose 以只读 Mount 语义把所选已有目录绑定到 `/data/userdata`；它还会把命名卷 `zhiwo-state` 挂载到 `/data/dsh`，只发布 `127.0.0.1:${ZHIWO_PORT}:18000`，提供应用健康检查，并使用 `restart: unless-stopped`。主机环境变量 `ZHIWO_USERDATA` 或 Make 变量 `USERDATA_DIR` 用于选择资料目录；`ZHIWO_PORT` 与 `ZHIWO_IMAGE` 是 Make 变量。`make zhiwo-docker-package` 与 `make zhiwo-docker-deploy` 分别暴露镜像和部署阶段，`make zhiwo-docker-up` 则连续完成两者。重建镜像或执行 `docker compose down` 都会保留命名状态卷。
+根目录 Dockerfile 把构建后的 `@deepseek-ai/dsh` 生产依赖闭包与该 Patch 注入 Node 24 Runtime 镜像，不会复制用户资料。镜像不会从源码 Checkout 解析代码或数据，并且要求在运行时挂载 `userdata`。Compose 以只读 Mount 语义把所选已有目录绑定到 `/data/userdata`；它还会把命名卷 `zhiwo-state` 挂载到 `/data/dsh`，发布 `0.0.0.0:${ZHIWO_PORT}:18000`，提供应用健康检查，并使用 `restart: unless-stopped`。`ZHIWO_TRUSTED_HOST` 是该部署供浏览器访问的必填 Authority；Compose 通过 `--trusted-host` 传入该值，已有 API Trust Validation 会在启动时拒绝格式错误的 Authority。主机环境变量 `ZHIWO_USERDATA` 或 Make 变量 `USERDATA_DIR` 用于选择资料目录；`ZHIWO_PORT` 与 `ZHIWO_IMAGE` 是 Make 变量。`make zhiwo-docker-package` 与 `make zhiwo-docker-deploy` 分别暴露镜像和部署阶段，`make zhiwo-docker-up` 则连续完成两者。重建镜像或执行 `docker compose down` 都会保留命名状态卷。
 
 `zhiwo` Preset 告诉模型，它是资料所有者面向访客的个人 Agent。回答中的第一人称指资料所有者，不能指 Agent 或访客；测试 Fixture 与示例也不能在缺少所有者正式资料确认时成为所有者事实。该 Preset 使用维护中的文件系统 Consumer，并把 `mutations` 设为 `false`，同时挂载维护中的文件搜索 Consumer，因此模型只会看到 `read`、`glob` 和 `grep`。[`zhiwo-agent-policy`](../agent-policy/README.md) 插件通过文件系统 Provider 解析每个读取或搜索根，并要求其规范目标仍位于 Session `cwd` 下；绝对路径、`..` 穿越和指向外部目标的符号链接会在读取或启动搜索进程前失败。成功的 read 值只暴露规范化相对路径。文件仍从 `userdata/` 实时读取；修改原文件后，后续 Turn 无需同步即可检索到新内容。
 
