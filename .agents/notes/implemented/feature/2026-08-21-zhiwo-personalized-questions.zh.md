@@ -20,7 +20,7 @@ Product 在现有 Connection `/api` Channel 上注册一个内部 `zhiwo/questio
 
 辅助请求分发前，Product 会写入 `zhiwo/question-llm-request`，其中包含确切 Route、System Prompt、Message List、已完成 Turn 的 Sequence 与输出 Token 上限。该事件不进入派生 Conversation Surface，因此不会成为以后 Assistant 回答的一部分；Session Log 仍可以重建所有模型可见的提示问题输入。`questionModelMaxInputBytes` 限制完整辅助输入，并保留最近的 Transcript 尾部；`questionModelMaxOutputTokens` 限制响应。请求使用 `GenerateOptions.purpose: 'suggestions'`，DeepSeek Adapter 会为这份有界 JSON 输出禁用思考。
 
-`packages/zhiwo/ui` 使用现有 `conversation.input.dock` List Seat 渲染提示问题面板。空白 Session 请求问候问题，新完成的 Turn 请求后续问题。点击问题只把它写入原生 Composer Draft，是否发送仍由用户明确决定。两个阶段都提供刷新按钮。每个 Session 与 Locale 同时最多有一个请求，按钮会显示加载状态；更新失败、取消、中断或响应格式错误时，界面保留原来的四个问题并显示可重试提示。浏览器会验证每个响应；后续响应的 Source Tag 不能证明严格二加二时必须拒绝。
+`packages/zhiwo/ui` 使用现有 `conversation.input.dock` List Seat 渲染提示问题面板。空白 Session 请求问候问题，新完成的 Turn 请求后续问题。点击问题只把它写入原生 Composer Draft，是否发送仍由用户明确决定。两个阶段都提供一个刷新按钮及其相邻的显隐控件。问题卡在宽度超过 720 px 时默认展开，在 720 px 及以下时默认收起；用户手动修改的显隐状态会持续到组件再次挂载。刷新会先展开问题卡，再请求下一组。每个 Session 与 Locale 同时最多有一个请求，按钮会显示加载状态；更新失败、取消、中断或响应格式错误时，界面保留原来的四个问题供用户继续使用，并显示可重试提示。浏览器会验证每个响应；后续响应的 Source Tag 不能证明严格二加二时必须拒绝。
 
 知我AI还会拦截原生 Conversation Placeholder 扩展点。中文可见消息输入框使用“问问我的经历、项目、能力或计划”，英文使用“Ask about my experience, projects, strengths, or plans”，其中第一人称指被代表的资料所有者。空白会话问候语同样邀请访客了解所有者，不会把 Agent 介绍成独立主体。其他通用 Web Profile 继续使用原文案。知我AI Patch 按显式 `--port`、`ZHIWO_LISTEN_PORT`、`18000` 的顺序解析 Web 端口，并按显式启动值、`ZHIWO_LISTEN_HOST`、`127.0.0.1` 的顺序解析绑定地址。随仓库交付的 Docker 组合只在容器内部使用 Host 覆盖，并把端口发布到主机回环地址。无效或已占用端口在启动时直接失败，绝不回退到操作系统随机端口。
 
@@ -47,7 +47,7 @@ Product 在现有 Connection `/api` Channel 上注册一个内部 `zhiwo/questio
 ## 测试
 
 - 启动不等待目录清单扫描；扫描器只读取符合条件的直接子目录/文档元数据，绝不读取文档正文。指纹未变化时复用私有缓存，不初始化目录或重写缓存；目录或文档发生变化时缓存失效。完整目录包含 100 个唯一语义问题对，每个 ID 在两种语言中都有一个完整表达。
-- 空白 Session 展示四个问题；手动刷新会轮换问题，失败时不替换当前可见集合。存在项目时，这四个问题包含两个全局问题与两个项目问题。
+- 空白 Session 展示四个问题；手动刷新会轮换问题，失败时不替换当前可用集合。存在项目时，这四个问题包含两个全局问题与两个项目问题。桌面视口初始显示问题卡，手机视口初始隐藏问题卡；显隐控件支持双向切换，刷新会展开已收起的集合。
 - 每次新完成的 Assistant Turn 都会调用已记录的对话模型，并把面板替换为严格两个生成上下文问题与两个目录全局问题。手动刷新会再次调用相同 Route，并把可见上下文问题列为需要避开的问题。失败、取消、阻塞、达到 Token 上限与中断的 Turn 保留上一次成功集合。
 - 分发前 Session Event 记录确切提示问题模型输入与 Route。无效 JSON、额外字段、重复问题、禁止术语、绝对路径、Tool Call 与非正常结束原因都会失败，不会发布替代集合。
 - 切换中文或英文会更新问题、控件、错误文案与知我AI Composer Placeholder，但不改变语义 ID。任何可见提示问题不得包含绝对路径或禁止的实现术语。

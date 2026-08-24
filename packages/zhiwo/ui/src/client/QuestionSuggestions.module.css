@@ -34,21 +34,40 @@
   font-weight: 500;
 }
 
-.refresh {
-  display: inline-flex;
+.actions {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
+  gap: 2px;
+}
+
+.toggle,
+.refresh {
   border: 0;
   border-radius: 7px;
   background: transparent;
   color: #56805b;
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
   cursor: pointer;
 }
 
+.toggle {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+}
+
+.refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.toggle:hover,
 .refresh:hover:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-secondary);

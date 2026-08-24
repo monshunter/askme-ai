@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-zhiwo-personalized-questions.md
-2026-08-21-zhiwo-personalized-questions.md: ba3b1a021ee0b3c4cf61a8b667f63a0c224c3264
-2026-08-21-zhiwo-personalized-questions.zh.md: 0efbd83c2bdecd240f6f7c06b846395202fceac1
+2026-08-21-zhiwo-personalized-questions.md: 53d720ad9037aa00368717c8c4f3fa2197eb5159
+2026-08-21-zhiwo-personalized-questions.zh.md: 7047e07a67818f5fb02b7f12b0a430d2cdc8c57b

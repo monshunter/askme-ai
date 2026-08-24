@@ -126,9 +126,12 @@ describe('Zhiwo contextual-question browser snapshot', () => {
     const collapseTooltip = sidebar.locator('[role="tooltip"]', { hasText: '收起侧边栏' })
     expect(await collapseTooltip.isVisible()).toBe(false)
 
+    await panel.getByRole('button', { name: '收起推荐问题' }).click()
+    expect(await contextual.count()).toBe(0)
     await panel.getByRole('button', { name: '换一组' }).click()
     await expect.poll(async () => contextual.allTextContents(), { timeout: 15_000 })
       .toEqual(GENERATIONS[1].map(question => question.zh))
+    expect(await panel.getByRole('button', { name: '收起推荐问题' }).getAttribute('aria-expanded')).toBe('true')
     const refreshed = await contextual.allTextContents()
     expect(await globals.count()).toBe(2)
     expect(requests).toHaveLength(2)
@@ -157,4 +160,27 @@ describe('Zhiwo contextual-question browser snapshot', () => {
     expect(tripwire.pageErrors).toEqual([])
     await assertFixtureInventory(SNAPSHOT_DIR, ['questions.expected.md'])
   }, 90_000)
+
+  it('starts collapsed in a mobile viewport and supports manual expansion', async () => {
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: 'zh-CN' })
+    const mobileTripwire = watchConsole(mobile)
+    onTestFailed(() => saveFailureShot(mobile, 'web-zhiwo-question-generation-mobile'))
+    try {
+      await mobile.goto(scaffold.baseUrl, { waitUntil: 'load' })
+      const panel = mobile.locator('[data-question-kind]')
+      await panel.waitFor({ timeout: 30_000 })
+      const expand = panel.getByRole('button', { name: '展开推荐问题' })
+      await expand.waitFor({ timeout: 15_000 })
+      expect(await expand.getAttribute('aria-expanded')).toBe('false')
+      expect(await panel.locator('[data-question-id]').count()).toBe(0)
+
+      await expand.click()
+      await expect.poll(() => panel.locator('[data-question-id]').count(), { timeout: 15_000 }).toBe(4)
+      expect(await panel.getByRole('button', { name: '收起推荐问题' }).getAttribute('aria-expanded')).toBe('true')
+      expect(mobileTripwire.warnings).toEqual([])
+      expect(mobileTripwire.pageErrors).toEqual([])
+    } finally {
+      await mobile.close()
+    }
+  }, 60_000)
 })

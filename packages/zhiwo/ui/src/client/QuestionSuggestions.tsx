@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LocaleSnapshot } from '@deepseek-ai/dsh-client-locale/client'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import type { RpcResult } from '@deepseek-ai/dsh-client-connection/client'
-import { IconChevronRightOutline14, IconRefreshOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  IconChevronDownOutline14,
+  IconChevronRightOutline14,
+  IconChevronUpOutline14,
+  IconRefreshOutline16,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { ZhiwoIntroduction } from './Greeting.tsx'
@@ -103,13 +108,14 @@ function sourceCounts(items: readonly { readonly source: QuestionSource }[]): Re
   }, { global: 0, project: 0, context: 0 })
 }
 
-/** Render four validated semantic questions and preserve the last good set across refresh failures. */
+/** Render four validated semantic questions with responsive disclosure and preserve the last good set across refresh failures. */
 export function QuestionSuggestions({
   sessionId, session, input, inputActions, useLocale, requestQuestions, t,
 }: QuestionSuggestionsProps) {
   const locale = useLocale(snapshot => snapshot.active)
   const target = useMemo(() => requestTarget(session), [session.chat.timeline.turnOrder, session.turnEnds])
   const [state, setState] = useState<SuggestionState>({ key: target.key, items: [], error: undefined, loading: true })
+  const [expanded, setExpanded] = useState(() => window.innerWidth > 720)
   const seen = useRef(new Map<string, Set<string>>())
   const requestGeneration = useRef(0)
   const controller = useRef<AbortController | undefined>()
@@ -164,26 +170,47 @@ export function QuestionSuggestions({
   const followup = target.kind === 'followup'
   const locked = session.running || input.phase === 'adjudicating' || input.phase === 'submitting'
   const refreshLabel = state.loading ? t('questions.refreshing') : t('questions.refresh')
+  const disclosureLabel = t(expanded ? 'questions.collapse' : 'questions.expand')
 
   return (
-    <section className={css.dock} aria-label={t(followup ? 'questions.followup.aria' : 'questions.welcome.aria')} data-question-kind={target.kind}>
+    <section
+      className={css.dock}
+      aria-label={t(followup ? 'questions.followup.aria' : 'questions.welcome.aria')}
+      data-question-kind={target.kind}
+      data-question-expanded={expanded}
+    >
       <div className={css.panel}>
         {session.blank && <ZhiwoIntroduction placement="dock" t={t} />}
         <div className={css.header}>
           <h2 className={css.title}>{t(followup ? 'questions.followup.heading' : 'questions.welcome.heading')}</h2>
-          <button
-            type="button"
-            className={css.refresh}
-            disabled={state.loading}
-            aria-label={refreshLabel}
-            title={refreshLabel}
-            onClick={() => { void refresh(true) }}
-          >
-            <IconRefreshOutline16 className={state.loading ? css.spinning : undefined} />
-            <span>{refreshLabel}</span>
-          </button>
+          <div className={css.actions}>
+            <button
+              type="button"
+              className={css.toggle}
+              aria-expanded={expanded}
+              aria-label={disclosureLabel}
+              title={disclosureLabel}
+              onClick={() => { setExpanded(current => !current) }}
+            >
+              {expanded ? <IconChevronUpOutline14 /> : <IconChevronDownOutline14 />}
+            </button>
+            <button
+              type="button"
+              className={css.refresh}
+              disabled={state.loading}
+              aria-label={refreshLabel}
+              title={refreshLabel}
+              onClick={() => {
+                setExpanded(true)
+                void refresh(true)
+              }}
+            >
+              <IconRefreshOutline16 className={state.loading ? css.spinning : undefined} />
+              <span>{refreshLabel}</span>
+            </button>
+          </div>
         </div>
-        {visibleItems.length === 4 && (
+        {expanded && visibleItems.length === 4 && (
           <div className={css.grid}>
             {visibleItems.map((item, index) => (
               <button

@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QuestionSuggestions, type QuestionSuggestionsProps } from '../src/client/QuestionSuggestions.tsx'
 import { parseQuestionResponse, type QuestionItem, type QuestionResponse } from '../src/client/question-contract.ts'
 
-afterEach(() => { cleanup() })
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 const copy: Record<string, string> = {
   'brand.name': '知我AI',
@@ -13,6 +16,8 @@ const copy: Record<string, string> = {
   'questions.welcome.heading': '可以这样了解我',
   'questions.followup.aria': '后续推荐问题',
   'questions.followup.heading': '还可以继续问',
+  'questions.expand': '展开推荐问题',
+  'questions.collapse': '收起推荐问题',
   'questions.refresh': '换一组',
   'questions.refreshing': '正在更新',
   'questions.loading': '正在准备可提问的问题…',
@@ -88,14 +93,37 @@ describe('Zhiwo question suggestions', () => {
     const setDraft = vi.fn()
     const view = render(<QuestionSuggestions {...props({ requestQuestions, setDraft })} />)
 
-    await waitFor(() => { expect(view.getAllByRole('button')).toHaveLength(5) })
+    await waitFor(() => { expect(view.getAllByRole('button')).toHaveLength(6) })
     expect(view.getByText('你好，欢迎来了解我')).toBeTruthy()
     expect(view.getAllByText(/^中文 /u)).toHaveLength(4)
     fireEvent.click(view.getByText('中文 a'))
     expect(setDraft).toHaveBeenCalledWith('中文 a')
+    fireEvent.click(view.getByRole('button', { name: '收起推荐问题' }))
+    expect(view.queryByText('中文 a')).toBeNull()
+    fireEvent.click(view.getByRole('button', { name: '展开推荐问题' }))
+    expect(view.getByText('中文 a')).toBeTruthy()
     fireEvent.click(view.getByRole('button', { name: '换一组' }))
     await waitFor(() => { expect(view.getByText('中文 e')).toBeTruthy() })
     expect(requestQuestions.mock.calls[1]?.[0]).toMatchObject({ excludeIds: ['a', 'b', 'c', 'd'] })
+  })
+
+  it('starts collapsed on mobile and expands when the questions are refreshed', async () => {
+    vi.stubGlobal('innerWidth', 390)
+    const requestQuestions = vi.fn()
+      .mockResolvedValueOnce({ ok: true, value: response('welcome', ['a', 'b', 'c', 'd']) })
+      .mockResolvedValueOnce({ ok: true, value: response('welcome', ['e', 'f', 'g', 'h']) })
+    const view = render(<QuestionSuggestions {...props({ requestQuestions })} />)
+
+    await waitFor(() => { expect(requestQuestions).toHaveBeenCalledTimes(1) })
+    await waitFor(() => {
+      expect(view.getByRole('button', { name: '换一组' }).hasAttribute('disabled')).toBe(false)
+    })
+    expect(view.queryByText('中文 a')).toBeNull()
+    expect(view.getByRole('button', { name: '展开推荐问题' }).getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(view.getByRole('button', { name: '换一组' }))
+    await waitFor(() => { expect(view.getByText('中文 e')).toBeTruthy() })
+    expect(view.getByRole('button', { name: '收起推荐问题' }).getAttribute('aria-expanded')).toBe('true')
   })
 
   it('preserves the previous set and exposes retry when refresh fails', async () => {
